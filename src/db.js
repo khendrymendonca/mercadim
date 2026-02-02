@@ -501,3 +501,25 @@ export const deleteStore = async (id) => {
     if (error) throw error;
 };
 
+// Meal Allowance Operations
+export const getMealAllowance = async (monthYear) => {
+    const { data, error } = await supabase
+        .from('meal_allowances')
+        .select('*')
+        .eq('month_year', monthYear)
+        .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+};
+
+export const setMealAllowance = async (monthYear, amount) => {
+    const { data, error } = await supabase
+        .from('meal_allowances')
+        .upsert({ month_year: monthYear, amount }, { onConflict: 'month_year' })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+};

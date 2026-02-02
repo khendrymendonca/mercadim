@@ -292,7 +292,7 @@ function ItemCard({ item, type, onDelete, onEdit }) {
                     <h3 style={{ fontWeight: 600, fontSize: 'var(--font-size-lg)' }}>{item.name}</h3>
                     {type === 'products' && (
                         <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)' }}>
-                            {item.category} • Padrao: {item.unit}
+                            {item.category} • Unidade Padrão: {item.unit}
                         </p>
                     )}
                     {type === 'stores' && (

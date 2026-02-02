@@ -347,8 +347,8 @@ function ProductSearch() {
                             <div key={prod.id} className="card fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--spacing-md)' }}>
                                 <div onClick={() => handleSelectProduct(prod.name)} style={{ cursor: 'pointer', flex: 1 }}>
                                     <h3 style={{ fontWeight: 600 }}>{prod.name}</h3>
-                                    <p style={{ fontSize: '10px', color: 'var(--slate-500)' }}>
-                                        {prod.category} • {prod.unit}
+                                    <p style={{ fontSize: '12px', color: 'var(--primary-600)', fontWeight: 600 }}>
+                                        {prod.category} • Unidade Padrão: {prod.unit}
                                     </p>
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
