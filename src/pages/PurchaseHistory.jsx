@@ -161,6 +161,16 @@ function PurchaseHistory() {
                                         placeholder="Qtd / Peso"
                                     />
                                 </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                                    <input
+                                        type="checkbox"
+                                        id="editIsPromotionHistory"
+                                        checked={editForm.isPromotion || false}
+                                        onChange={(e) => setEditForm({ ...editForm, isPromotion: e.target.checked })}
+                                        style={{ width: '18px', height: '18px' }}
+                                    />
+                                    <label htmlFor="editIsPromotionHistory" style={{ fontWeight: 600, color: 'var(--emerald-700)', fontSize: '14px' }}>Item em Promoção</label>
+                                </div>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
                                     <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSaveEdit}>
                                         <Check size={18} /> Salvar
@@ -178,6 +188,7 @@ function PurchaseHistory() {
                                     </h4>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)' }}>
                                         <span className="badge badge-success">{item.category}</span>
+                                        {item.isPromotion && <span className="badge" style={{ background: 'var(--emerald-100)', color: 'var(--emerald-700)', fontWeight: 700 }}>🎁 PROMO</span>}
                                         {item.brand && (
                                             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>
                                                 {item.brand}

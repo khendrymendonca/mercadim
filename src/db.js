@@ -22,6 +22,44 @@ export const getAllStores = async () => {
     return data;
 };
 
+// Product Catalog Operations
+export const addProduct = async (product) => {
+    const { data, error } = await supabase
+        .from('products')
+        .insert([{
+            name: product.name,
+            default_category: product.category,
+            default_unit: product.unit
+        }])
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+};
+
+export const getAllProducts = async () => {
+    const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data.map(p => ({
+        ...p,
+        category: p.default_category,
+        unit: p.default_unit
+    }));
+};
+
+export const deleteProduct = async (id) => {
+    const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
+};
+
 export const getStoreById = async (id) => {
     const { data, error } = await supabase
         .from('stores')
@@ -96,7 +134,8 @@ export const addPurchaseItem = async (item) => {
             weight: item.weight,
             unit: item.unit,
             price: item.price,
-            date: item.date
+            date: item.date,
+            is_promotion: item.isPromotion || false
         }]);
 
     if (error) throw error;
@@ -113,7 +152,8 @@ export const getPurchaseItems = async (purchaseId) => {
     return data.map(i => ({
         ...i,
         purchaseId: i.purchase_id,
-        productName: i.product_name
+        productName: i.product_name,
+        isPromotion: i.is_promotion
     }));
 };
 
@@ -139,14 +179,15 @@ export const updatePurchaseItem = async (id, updates) => {
             category: updates.category,
             weight: updates.weight,
             unit: updates.unit,
-            price: updates.price
+            price: updates.price,
+            is_promotion: updates.isPromotion
         })
         .eq('id', id)
         .select()
         .single();
 
     if (error) throw error;
-    return { ...data, productName: data.product_name };
+    return { ...data, productName: data.product_name, isPromotion: data.is_promotion };
 };
 
 export const deletePurchaseItem = async (id, purchaseId) => {
@@ -386,3 +427,12 @@ export const getStoreRanking = async () => {
         };
     }).sort((a, b) => a.averageSpent - b.averageSpent);
 };
+
+export const deleteStore = async (id) => {
+    const { error } = await supabase
+        .from('stores')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
+};
+

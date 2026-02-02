@@ -6,6 +6,7 @@ import ShoppingList from './pages/ShoppingList';
 import PurchaseHistory from './pages/PurchaseHistory';
 import Dashboard from './pages/Dashboard';
 import ProductSearch from './pages/ProductSearch';
+import Catalog from './pages/Catalog';
 
 function App() {
     return (
@@ -19,6 +20,7 @@ function App() {
                         <Route path="/history" element={<PurchaseHistory />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/search" element={<ProductSearch />} />
+                        <Route path="/catalog" element={<Catalog />} />
                     </Routes>
                 </main>
                 <Navigation />
@@ -39,16 +41,19 @@ function Header() {
             zIndex: 100
         }}>
             <div className="container">
-                <h1 style={{
-                    fontSize: 'var(--font-size-2xl)',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 'var(--spacing-sm)'
-                }}>
-                    <ShoppingCart size={32} />
-                    Smart Price Tracker
-                </h1>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h1 style={{
+                        fontSize: 'var(--font-size-2xl)',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 'var(--spacing-sm)'
+                    }}>
+                        <ShoppingCart size={32} />
+                        Smart Price Tracker
+                    </h1>
+                    <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>v1.1.0</span>
+                </div>
                 <p style={{
                     fontSize: 'var(--font-size-sm)',
                     opacity: 0.9,
@@ -69,7 +74,8 @@ function Navigation() {
         { path: '/list', icon: ClipboardList, label: 'Listas' },
         { path: '/history', icon: History, label: 'Histórico' },
         { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
-        { path: '/search', icon: Search, label: 'Consulta' }
+        { path: '/search', icon: Search, label: 'Consulta' },
+        { path: '/catalog', icon: Tag, label: 'Gerenciar' }
     ];
 
     return (
@@ -85,7 +91,7 @@ function Navigation() {
         }}>
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
+                gridTemplateColumns: 'repeat(6, 1fr)',
                 maxWidth: '1200px',
                 margin: '0 auto'
             }}>

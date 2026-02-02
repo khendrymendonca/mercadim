@@ -19,13 +19,16 @@ function NewPurchase() {
     const [selectedStore, setSelectedStore] = useState('');
     const [purchaseDate, setPurchaseDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [items, setItems] = useState([]);
+    const [catalog, setCatalog] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
     const [currentItem, setCurrentItem] = useState({
         productName: '',
         brand: '',
         weight: '',
         unit: 'kg',
         category: 'Mercearia',
-        price: ''
+        price: '',
+        isPromotion: false
     });
     const [availableLists, setAvailableLists] = useState([]);
     const [selectedListId, setSelectedListId] = useState('');
@@ -35,11 +38,18 @@ function NewPurchase() {
     const [showEditModal, setShowEditModal] = useState(null);
     const [editPrice, setEditPrice] = useState('');
     const [editWeight, setEditWeight] = useState('');
+    const [editIsPromotion, setEditIsPromotion] = useState(false);
 
     useEffect(() => {
         loadStores();
         loadLists();
+        loadCatalog();
     }, []);
+
+    const loadCatalog = async () => {
+        const prodList = await getAllProducts();
+        setCatalog(prodList);
+    };
 
     const loadLists = async () => {
         const listData = await getAllShoppingLists();
@@ -112,7 +122,8 @@ function NewPurchase() {
             ...currentItem,
             price: parseFloat(currentItem.price),
             pricePerUnit: pricePerUnit ? parseFloat(pricePerUnit) : null,
-            id: Date.now()
+            id: Date.now(),
+            isPromotion: currentItem.isPromotion
         };
 
         setItems([...items, newItem]);
@@ -122,7 +133,8 @@ function NewPurchase() {
             weight: '',
             unit: 'kg',
             category: 'Mercearia',
-            price: ''
+            price: '',
+            isPromotion: false
         });
         setLowestPriceInfo(null);
     };
@@ -178,7 +190,8 @@ function NewPurchase() {
                     category: item.category || 'Outros',
                     price: parseFloat(item.price) || 0,
                     purchaseId: purchaseId,
-                    date: purchaseDate
+                    date: purchaseDate,
+                    isPromotion: item.isPromotion || false
                 };
 
                 await addPurchaseItem(cleanItem);
@@ -208,6 +221,7 @@ function NewPurchase() {
         setShowEditModal(item);
         setEditPrice(item.price || '');
         setEditWeight(item.weight || '1');
+        setEditIsPromotion(item.isPromotion || false);
 
         // Buscar menor preço histórico para inteligência no mercado
         const lowest = await getLowestPrice(item.productName);
@@ -218,7 +232,8 @@ function NewPurchase() {
         setItems(items.map(i => i.id === showEditModal.id ? {
             ...i,
             price: parseFloat(editPrice),
-            weight: parseFloat(editWeight)
+            weight: parseFloat(editWeight),
+            isPromotion: editIsPromotion
         } : i));
         setShowEditModal(null);
         setLowestPriceInfo(null);
@@ -352,14 +367,65 @@ function NewPurchase() {
                     </div>
                 )}
 
-                <input
-                    className="input"
-                    type="text"
-                    placeholder="Nome do produto"
-                    value={currentItem.productName}
-                    onChange={(e) => setCurrentItem({ ...currentItem, productName: e.target.value })}
-                    style={{ marginBottom: 'var(--spacing-sm)' }}
-                />
+                <div style={{ position: 'relative' }}>
+                    <input
+                        className="input"
+                        type="text"
+                        placeholder="Nome do produto"
+                        value={currentItem.productName}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setCurrentItem({ ...currentItem, productName: val });
+                            if (val.length > 1) {
+                                const filtered = catalog.filter(p => p.name.toLowerCase().includes(val.toLowerCase()));
+                                setSuggestions(filtered);
+                            } else {
+                                setSuggestions([]);
+                            }
+                        }}
+                        style={{ marginBottom: 'var(--spacing-sm)' }}
+                    />
+                    {suggestions.length > 0 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '45px',
+                            left: 0,
+                            right: 0,
+                            background: 'white',
+                            zIndex: 10,
+                            border: '1px solid var(--slate-200)',
+                            borderRadius: 'var(--radius-md)',
+                            boxShadow: 'var(--shadow-lg)',
+                            maxHeight: '200px',
+                            overflowY: 'auto'
+                        }}>
+                            {suggestions.map(p => (
+                                <div
+                                    key={p.id}
+                                    onClick={() => {
+                                        setCurrentItem({
+                                            ...currentItem,
+                                            productName: p.name,
+                                            category: p.category,
+                                            unit: p.unit
+                                        });
+                                        setSuggestions([]);
+                                    }}
+                                    style={{
+                                        padding: '10px',
+                                        cursor: 'pointer',
+                                        borderBottom: '1px solid var(--slate-100)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between'
+                                    }}
+                                >
+                                    <span style={{ fontWeight: 600 }}>{p.name}</span>
+                                    <span style={{ fontSize: '10px', color: 'var(--slate-400)' }}>{p.category}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
 
                 <input
                     className="input"
@@ -412,6 +478,17 @@ function NewPurchase() {
                     onChange={(e) => setCurrentItem({ ...currentItem, price: e.target.value })}
                     style={{ marginBottom: 'var(--spacing-md)' }}
                 />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
+                    <input
+                        type="checkbox"
+                        id="isPromotion"
+                        checked={currentItem.isPromotion}
+                        onChange={(e) => setCurrentItem({ ...currentItem, isPromotion: e.target.checked })}
+                        style={{ width: '20px', height: '20px' }}
+                    />
+                    <label htmlFor="isPromotion" style={{ fontWeight: 600, color: 'var(--emerald-700)' }}>🏷️ Este item está em Promoção?</label>
+                </div>
 
                 {pricePerUnit && (
                     <div style={{
@@ -467,6 +544,7 @@ function NewPurchase() {
                             <div style={{ flex: 1 }}>
                                 <p style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {item.productName}
+                                    {item.isPromotion && <span style={{ fontSize: '10px', background: 'var(--emerald-500)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PROMO</span>}
                                     {item.price === null && <span style={{ fontSize: '10px', background: 'var(--slate-400)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PENDENTE</span>}
                                 </p>
                                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>
