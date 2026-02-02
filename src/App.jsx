@@ -1,7 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, History, TrendingUp, Search } from 'lucide-react';
+import { ShoppingCart, History, TrendingUp, Search, ClipboardList } from 'lucide-react';
 import NewPurchase from './pages/NewPurchase';
+import ShoppingList from './pages/ShoppingList';
 import PurchaseHistory from './pages/PurchaseHistory';
 import Dashboard from './pages/Dashboard';
 import ProductSearch from './pages/ProductSearch';
@@ -14,6 +15,7 @@ function App() {
                 <main style={{ flex: 1, paddingBottom: '80px' }}>
                     <Routes>
                         <Route path="/" element={<NewPurchase />} />
+                        <Route path="/list" element={<ShoppingList />} />
                         <Route path="/history" element={<PurchaseHistory />} />
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/search" element={<ProductSearch />} />
@@ -64,6 +66,7 @@ function Navigation() {
 
     const navItems = [
         { path: '/', icon: ShoppingCart, label: 'Nova Compra' },
+        { path: '/list', icon: ClipboardList, label: 'Listas' },
         { path: '/history', icon: History, label: 'Histórico' },
         { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
         { path: '/search', icon: Search, label: 'Consulta' }

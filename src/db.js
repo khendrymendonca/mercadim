@@ -1,11 +1,11 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'SmartPriceTrackerDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Incrementado para adicionar novas stores
 
 export const initDB = async () => {
     return openDB(DB_NAME, DB_VERSION, {
-        upgrade(db) {
+        upgrade(db, oldVersion, newVersion, transaction) {
             // Stores (Mercados)
             if (!db.objectStoreNames.contains('stores')) {
                 const storeOS = db.createObjectStore('stores', { keyPath: 'id', autoIncrement: true });
@@ -25,6 +25,21 @@ export const initDB = async () => {
                 itemOS.createIndex('purchaseId', 'purchaseId', { unique: false });
                 itemOS.createIndex('productName', 'productName', { unique: false });
                 itemOS.createIndex('category', 'category', { unique: false });
+            }
+
+            // Shopping Lists (Listas de Compras)
+            if (!db.objectStoreNames.contains('shoppingLists')) {
+                const listOS = db.createObjectStore('shoppingLists', { keyPath: 'id', autoIncrement: true });
+                listOS.createIndex('name', 'name', { unique: false });
+                listOS.createIndex('createdAt', 'createdAt', { unique: false });
+                listOS.createIndex('status', 'status', { unique: false }); // 'active', 'completed'
+            }
+
+            // Shopping List Items (Itens da Lista)
+            if (!db.objectStoreNames.contains('shoppingListItems')) {
+                const listItemOS = db.createObjectStore('shoppingListItems', { keyPath: 'id', autoIncrement: true });
+                listItemOS.createIndex('listId', 'listId', { unique: false });
+                listItemOS.createIndex('productName', 'productName', { unique: false });
             }
         },
     });
@@ -78,6 +93,74 @@ export const getPurchaseItems = async (purchaseId) => {
 export const getAllPurchaseItems = async () => {
     const db = await initDB();
     return db.getAll('purchaseItems');
+};
+
+// Shopping List Operations
+export const createShoppingList = async (list) => {
+    const db = await initDB();
+    return db.add('shoppingLists', {
+        ...list,
+        createdAt: new Date().toISOString(),
+        status: 'active'
+    });
+};
+
+export const getAllShoppingLists = async () => {
+    const db = await initDB();
+    const lists = await db.getAll('shoppingLists');
+    return lists.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+};
+
+export const getShoppingListById = async (id) => {
+    const db = await initDB();
+    return db.get('shoppingLists', id);
+};
+
+export const updateShoppingList = async (id, updates) => {
+    const db = await initDB();
+    const list = await db.get('shoppingLists', id);
+    const updated = { ...list, ...updates };
+    await db.put('shoppingLists', updated);
+    return updated;
+};
+
+export const deleteShoppingList = async (id) => {
+    const db = await initDB();
+    // Delete list items first
+    const items = await getShoppingListItems(id);
+    for (const item of items) {
+        await db.delete('shoppingListItems', item.id);
+    }
+    // Delete list
+    await db.delete('shoppingLists', id);
+};
+
+// Shopping List Item Operations
+export const addShoppingListItem = async (item) => {
+    const db = await initDB();
+    return db.add('shoppingListItems', {
+        ...item,
+        checked: false,
+        price: null
+    });
+};
+
+export const getShoppingListItems = async (listId) => {
+    const db = await initDB();
+    return db.getAllFromIndex('shoppingListItems', 'listId', listId);
+};
+
+export const updateShoppingListItem = async (id, updates) => {
+    const db = await initDB();
+    const item = await db.get('shoppingListItems', id);
+    const updated = { ...item, ...updates };
+    await db.put('shoppingListItems', updated);
+    return updated;
+};
+
+export const deleteShoppingListItem = async (id) => {
+    const db = await initDB();
+    await db.delete('shoppingListItems', id);
 };
 
 // Analytics Operations
