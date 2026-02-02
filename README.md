@@ -1,6 +1,6 @@
-# Smart Price Tracker 🛒
+# Jireh 🕊️
 
-Progressive Web App (PWA) para controle de compras de supermercado e comparação de preços histórico.
+Provedor de economias para o seu mercado. Progressive Web App (PWA) para controle de compras e comparação histórica de preços.
 
 ## 🎯 Funcionalidades
 
@@ -32,9 +32,9 @@ Progressive Web App (PWA) para controle de compras de supermercado e comparaçã
 
 ## 🎨 Design
 - **Mobile-first** com botões grandes para uso no supermercado
-- Paleta: Verde esmeralda + Cinza azulado
+- Paleta: Sunset Warm (Laranja e Pêssego)
 - Animações suaves e micro-interações
-- Design moderno e premium
+- Design moderno, acolhedor e premium
 
 ## 💾 Tecnologias
 - **React** + **Vite**

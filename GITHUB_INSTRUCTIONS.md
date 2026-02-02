@@ -2,8 +2,8 @@
 
 ## Passo 1: Criar o repositório no GitHub
 1. Acesse: https://github.com/new
-2. Nome do repositório: `smart-price-tracker`
-3. Descrição: `PWA para controle de compras e comparação de preços histórico`
+2. Nome do repositório: `jireh-app`
+3. Descrição: `Jireh - O provedor das suas economias no mercado (PWA)`
 4. Escolha: **Público** ou **Privado**
 5. **NÃO** marque nenhuma opção de inicializar (README, .gitignore, licença)
 6. Clique em **Create repository**
@@ -14,7 +14,7 @@ Após criar o repositório, copie a URL que aparecerá (exemplo: `https://github
 Depois execute os comandos abaixo no terminal (já estamos no diretório correto):
 
 ```bash
-git remote add origin https://github.com/SEU_USUARIO/smart-price-tracker.git
+git remote add origin https://github.com/SEU_USUARIO/jireh-app.git
 git branch -M main
 git push -u origin main
 ```
@@ -27,7 +27,7 @@ git push -u origin main
 Seu projeto estará no GitHub e você poderá acessá-lo de qualquer lugar!
 
 ### 🔗 Links Úteis
-- **Repositório**: https://github.com/SEU_USUARIO/smart-price-tracker
+- **Repositório**: https://github.com/SEU_USUARIO/jireh-app
 - **Deploy gratuito**: Você pode fazer deploy no Vercel, Netlify ou GitHub Pages
 
 ### 📱 Para testar o PWA:

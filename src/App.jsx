@@ -52,9 +52,7 @@ function Header() {
                         gap: 'var(--spacing-sm)',
                         letterSpacing: '-1px'
                     }}>
-                        <div style={{ background: 'white', padding: '8px', borderRadius: '12px', display: 'flex' }}>
-                            <Heart size={28} color="var(--primary-600)" fill="var(--primary-600)" />
-                        </div>
+                        <img src="/logo.png" alt="Jireh Logo" style={{ width: '42px', height: '42px', borderRadius: '12px', objectFit: 'cover', background: 'white', padding: '2px' }} />
                         Jireh
                     </h1>
                     <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>v2.0.0</span>
