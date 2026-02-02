@@ -9,7 +9,9 @@ import {
     Search,
     ChevronRight,
     TrendingDown,
-    MapPin
+    MapPin,
+    Layers,
+    Edit2
 } from 'lucide-react';
 import {
     getAllProducts,
@@ -18,28 +20,34 @@ import {
     getAllStores,
     addStore,
     deleteStore,
-    getProductHistory
+    getProductHistory,
+    getAllCategories,
+    addCategory,
+    deleteCategory,
+    updateProduct,
+    updateStore,
+    updateCategory
 } from '../db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-const CATEGORIES = [
-    'Higiene', 'Bebidas', 'Mercearia', 'Padaria', 'Limpeza', 'Hortifruti', 'Açougue', 'Outros'
-];
+
 
 function Catalog() {
-    const [view, setView] = useState('products'); // 'products' or 'stores'
+    const [view, setView] = useState('products'); // 'products', 'stores', 'categories'
     const [products, setProducts] = useState([]);
     const [stores, setStores] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [showAddForm, setShowAddForm] = useState(false);
 
-    // New Product/Store state
+    // New Form state
     const [newName, setNewName] = useState('');
-    const [newCategory, setNewCategory] = useState('Mercearia');
+    const [newCategory, setNewCategory] = useState('');
     const [newUnit, setNewUnit] = useState('un');
     const [newAddress, setNewAddress] = useState('');
+    const [editingItem, setEditingItem] = useState(null);
 
     useEffect(() => {
         loadData();
@@ -47,63 +55,82 @@ function Catalog() {
 
     const loadData = async () => {
         setLoading(true);
-        const [prodList, storeList] = await Promise.all([
+        const [prodList, storeList, catList] = await Promise.all([
             getAllProducts(),
-            getAllStores()
+            getAllStores(),
+            getAllCategories()
         ]);
         setProducts(prodList);
         setStores(storeList);
+        setCategories(catList);
+        if (catList.length > 0) setNewCategory(catList[0].name);
         setLoading(false);
     };
 
-    const handleAddProduct = async (e) => {
+    const handleEdit = (item) => {
+        setEditingItem(item);
+        setNewName(item.name);
+        if (view === 'products') {
+            setNewCategory(item.category);
+            setNewUnit(item.unit);
+        } else if (view === 'stores') {
+            setNewAddress(item.address || '');
+        }
+        setShowAddForm(true);
+    };
+
+    const handleCancel = () => {
+        setEditingItem(null);
+        setNewName('');
+        setNewAddress('');
+        setShowAddForm(false);
+    };
+
+    const handleAddItem = async (e) => {
         e.preventDefault();
         if (!newName.trim()) return;
+
         try {
-            await addProduct({
-                name: newName,
-                category: newCategory,
-                unit: newUnit
-            });
-            setNewName('');
-            setShowAddForm(false);
+            if (editingItem) {
+                if (view === 'products') {
+                    await updateProduct(editingItem.id, { name: newName, category: newCategory, unit: newUnit });
+                } else if (view === 'stores') {
+                    await updateStore(editingItem.id, { name: newName, address: newAddress });
+                } else if (view === 'categories') {
+                    await updateCategory(editingItem.id, newName);
+                }
+            } else {
+                if (view === 'products') {
+                    await addProduct({ name: newName, category: newCategory, unit: newUnit });
+                } else if (view === 'stores') {
+                    await addStore({ name: newName, address: newAddress });
+                } else if (view === 'categories') {
+                    await addCategory(newName);
+                }
+            }
+
+            handleCancel();
             loadData();
         } catch (error) {
-            alert('Erro ao cadastrar produto: ' + error.message);
+            alert('Erro ao salvar: ' + error.message);
         }
     };
 
-    const handleAddStore = async (e) => {
-        e.preventDefault();
-        if (!newName.trim()) return;
-        try {
-            await addStore({ name: newName, address: newAddress });
-            setNewName('');
-            setNewAddress('');
-            setShowAddForm(false);
-            loadData();
-        } catch (error) {
-            alert('Erro ao cadastrar mercado: ' + error.message);
-        }
-    };
-
-    const handleDeleteProduct = async (id) => {
-        if (confirm('Deseja remover este produto do catálogo?')) {
-            await deleteProduct(id);
-            loadData();
-        }
-    };
-
-    const handleDeleteStore = async (id) => {
-        if (confirm('Deseja remover este mercado?')) {
-            await deleteStore(id);
+    const handleDelete = async (id, name) => {
+        const typeLabel = view === 'products' ? 'produto' : view === 'stores' ? 'mercado' : 'categoria';
+        if (confirm(`Deseja remover este ${typeLabel} "${name}"?`)) {
+            if (view === 'products') await deleteProduct(id);
+            else if (view === 'stores') await deleteStore(id);
+            else if (view === 'categories') await deleteCategory(id);
             loadData();
         }
     };
 
     const filteredItems = view === 'products'
         ? products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()))
-        : stores.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        : view === 'stores'
+            ? stores.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()))
+            : categories.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
     return (
         <div className="container" style={{ paddingTop: 'var(--spacing-lg)', paddingBottom: 'var(--spacing-2xl)' }}>
@@ -119,62 +146,72 @@ function Catalog() {
             </div>
 
             {/* View Switcher */}
-            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
+            <div style={{ display: 'flex', gap: 'var(--spacing-xs)', marginBottom: 'var(--spacing-lg)', overflowX: 'auto', paddingBottom: '4px' }}>
                 <button
                     className={`btn ${view === 'products' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, minWidth: '100px', fontSize: '13px' }}
                     onClick={() => { setView('products'); setShowAddForm(false); }}
                 >
-                    <Package size={18} style={{ marginRight: '8px' }} /> Catálogo
+                    <Package size={16} /> Catálogo
                 </button>
                 <button
                     className={`btn ${view === 'stores' ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ flex: 1 }}
+                    style={{ flex: 1, minWidth: '100px', fontSize: '13px' }}
                     onClick={() => { setView('stores'); setShowAddForm(false); }}
                 >
-                    <Store size={18} style={{ marginRight: '8px' }} /> Mercados
+                    <Store size={16} /> Mercados
+                </button>
+                <button
+                    className={`btn ${view === 'categories' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ flex: 1, minWidth: '100px', fontSize: '13px' }}
+                    onClick={() => { setView('categories'); setShowAddForm(false); }}
+                >
+                    <Layers size={16} /> Categorias
                 </button>
             </div>
 
             {/* Add Form */}
             {showAddForm && (
-                <div className="card fade-in" style={{ marginBottom: 'var(--spacing-lg)', border: '2px solid var(--emerald-500)' }}>
+                <div className="card fade-in" style={{ marginBottom: 'var(--spacing-lg)', border: '2px solid var(--primary-200)' }}>
                     <h3 style={{ marginBottom: 'var(--spacing-md)' }}>
-                        {view === 'products' ? 'Pré-cadastrar Produto' : 'Cadastrar Mercado'}
+                        {editingItem ? 'Editar ' : 'Novo '}
+                        {view === 'products' ? 'Produto' : view === 'stores' ? 'Mercado' : 'Categoria'}
                     </h3>
-                    <form onSubmit={view === 'products' ? handleAddProduct : handleAddStore}>
+                    <form onSubmit={handleAddItem}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
                             <input
                                 className="input"
-                                placeholder="Nome"
+                                placeholder={view === 'categories' ? "Nome da Categoria (ex: Bebidas)" : "Nome"}
                                 value={newName}
                                 onChange={(e) => setNewName(e.target.value)}
                                 required
+                                autoFocus
                             />
-                            {view === 'products' ? (
-                                <>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-sm)' }}>
-                                        <select
-                                            className="select"
-                                            value={newCategory}
-                                            onChange={(e) => setNewCategory(e.target.value)}
-                                        >
-                                            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                                        </select>
-                                        <select
-                                            className="select"
-                                            value={newUnit}
-                                            onChange={(e) => setNewUnit(e.target.value)}
-                                        >
-                                            <option value="kg">kg</option>
-                                            <option value="un">un</option>
-                                            <option value="L">L</option>
-                                            <option value="ml">ml</option>
-                                            <option value="g">g</option>
-                                        </select>
-                                    </div>
-                                </>
-                            ) : (
+
+                            {view === 'products' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-sm)' }}>
+                                    <select
+                                        className="select"
+                                        value={newCategory}
+                                        onChange={(e) => setNewCategory(e.target.value)}
+                                    >
+                                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                    <select
+                                        className="select"
+                                        value={newUnit}
+                                        onChange={(e) => setNewUnit(e.target.value)}
+                                    >
+                                        <option value="kg">kg</option>
+                                        <option value="un">un</option>
+                                        <option value="L">L</option>
+                                        <option value="ml">ml</option>
+                                        <option value="g">g</option>
+                                    </select>
+                                </div>
+                            )}
+
+                            {view === 'stores' && (
                                 <input
                                     className="input"
                                     placeholder="Endereço (opcional)"
@@ -182,9 +219,10 @@ function Catalog() {
                                     onChange={(e) => setNewAddress(e.target.value)}
                                 />
                             )}
+
                             <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Salvar</button>
-                                <button type="button" className="btn btn-secondary" onClick={() => setShowAddForm(false)}>Cancelar</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingItem ? 'Atualizar' : 'Salvar'}</button>
+                                <button type="button" className="btn btn-secondary" onClick={handleCancel}>Cancelar</button>
                             </div>
                         </div>
                     </form>
@@ -197,7 +235,7 @@ function Catalog() {
                 <input
                     className="input"
                     style={{ paddingLeft: '40px' }}
-                    placeholder={`Buscar ${view === 'products' ? 'produtos' : 'mercados'}...`}
+                    placeholder={`Buscar ${view === 'products' ? 'produtos' : view === 'stores' ? 'mercados' : 'categorias'}...`}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -217,7 +255,8 @@ function Catalog() {
                             key={item.id}
                             item={item}
                             type={view}
-                            onDelete={() => view === 'products' ? handleDeleteProduct(item.id) : handleDeleteStore(item.id)}
+                            onDelete={() => handleDelete(item.id, item.name)}
+                            onEdit={() => handleEdit(item)}
                         />
                     ))
                 )}
@@ -226,7 +265,7 @@ function Catalog() {
     );
 }
 
-function ItemCard({ item, type, onDelete }) {
+function ItemCard({ item, type, onDelete, onEdit }) {
     const [history, setHistory] = useState(null);
     const [expanded, setExpanded] = useState(false);
 
@@ -251,17 +290,24 @@ function ItemCard({ item, type, onDelete }) {
             >
                 <div>
                     <h3 style={{ fontWeight: 600, fontSize: 'var(--font-size-lg)' }}>{item.name}</h3>
-                    {type === 'products' ? (
+                    {type === 'products' && (
                         <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)' }}>
                             {item.category} • Padrao: {item.unit}
                         </p>
-                    ) : (
+                    )}
+                    {type === 'stores' && (
                         <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)' }}>
                             <MapPin size={12} style={{ display: 'inline', marginRight: '4px' }} /> {item.address || 'Sem endereço'}
                         </p>
                     )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-xs)' }}>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                        style={{ background: 'none', border: 'none', color: 'var(--slate-300)', cursor: 'pointer', padding: '8px' }}
+                    >
+                        <Edit2 size={16} />
+                    </button>
                     <button
                         onClick={(e) => { e.stopPropagation(); onDelete(); }}
                         style={{ background: 'none', border: 'none', color: 'var(--slate-300)', cursor: 'pointer', padding: '8px' }}
@@ -294,11 +340,11 @@ function ItemCard({ item, type, onDelete }) {
                             {history.slice(0, 3).map((h, i) => (
                                 <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--font-size-sm)', background: 'white', padding: '8px', borderRadius: '4px', border: '1px solid var(--slate-100)' }}>
                                     <div style={{ flex: 1 }}>
-                                        <p style={{ fontWeight: 500 }}>R$ {h.price.toFixed(2)} {h.isPromotion && <Tag size={12} style={{ color: 'var(--emerald-500)', display: 'inline' }} />}</p>
+                                        <p style={{ fontWeight: 600 }}>R$ {h.price.toFixed(2)} {h.isPromotion && <Tag size={12} style={{ color: 'var(--primary-500)', display: 'inline' }} />}</p>
                                         <p style={{ fontSize: '10px', color: 'var(--slate-500)' }}>{format(new Date(h.date), 'dd/MM/yy')} • {h.brand || 'S/M'}</p>
                                     </div>
                                     <div style={{ textAlign: 'right' }}>
-                                        {h.isPromotion && <span style={{ fontSize: '9px', background: 'var(--emerald-50)', color: 'var(--emerald-600)', padding: '2px 4px', borderRadius: '4px', fontWeight: 700 }}>PROMOÇÃO</span>}
+                                        {h.isPromotion && <span style={{ fontSize: '9px', background: 'var(--primary-50)', color: 'var(--primary-700)', padding: '2px 4px', borderRadius: '4px', fontWeight: 800 }}>PROMOÇÃO</span>}
                                     </div>
                                 </div>
                             ))}

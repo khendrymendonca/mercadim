@@ -22,6 +22,17 @@ export const getAllStores = async () => {
     return data;
 };
 
+export const updateStore = async (id, updates) => {
+    const { data, error } = await supabase
+        .from('stores')
+        .update({ name: updates.name, address: updates.address })
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
 // Product Catalog Operations
 export const addProduct = async (product) => {
     const { data, error } = await supabase
@@ -58,6 +69,60 @@ export const deleteProduct = async (id) => {
         .delete()
         .eq('id', id);
     if (error) throw error;
+};
+
+export const updateProduct = async (id, updates) => {
+    const { data, error } = await supabase
+        .from('products')
+        .update({
+            name: updates.name,
+            default_category: updates.category,
+            default_unit: updates.unit
+        })
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return { ...data, category: data.default_category, unit: data.default_unit };
+};
+
+// Category Operations
+export const addCategory = async (name) => {
+    const { data, error } = await supabase
+        .from('categories')
+        .insert([{ name }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const getAllCategories = async () => {
+    const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
+    if (error) throw error;
+    return data;
+};
+
+export const deleteCategory = async (id) => {
+    const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+    if (error) throw error;
+};
+
+export const updateCategory = async (id, name) => {
+    const { data, error } = await supabase
+        .from('categories')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
 };
 
 export const getStoreById = async (id) => {

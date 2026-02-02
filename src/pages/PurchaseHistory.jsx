@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Store as StoreIcon, ChevronRight, Package, Edit2, Check, X, Tag, Trash2 } from 'lucide-react';
-import { getAllPurchases, getAllStores, getPurchaseItems, updatePurchaseItem, deletePurchase, deletePurchaseItem, getPurchaseById } from '../db';
+import { getAllPurchases, getAllStores, getPurchaseItems, updatePurchaseItem, deletePurchase, deletePurchaseItem, getPurchaseById, getAllCategories } from '../db';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -12,9 +12,7 @@ function PurchaseHistory() {
     const [editingItemId, setEditingItemId] = useState(null);
     const [editForm, setEditForm] = useState({});
 
-    const CATEGORIES = [
-        'Higiene', 'Bebidas', 'Mercearia', 'Padaria', 'Limpeza', 'Hortifruti', 'Açougue', 'Outros'
-    ];
+    const [categories, setCategories] = useState([]);
 
     useEffect(() => {
         loadData();
@@ -23,8 +21,10 @@ function PurchaseHistory() {
     const loadData = async () => {
         const purchaseList = await getAllPurchases();
         const storeList = await getAllStores();
+        const catList = await getAllCategories();
         setPurchases(purchaseList);
         setStores(storeList);
+        setCategories(catList);
     };
 
     const getStoreName = (storeId) => {
@@ -102,7 +102,7 @@ function PurchaseHistory() {
                         </div>
                         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--spacing-xs)' }}>
                             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>Total</p>
-                            <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                            <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
                                 R$ {selectedPurchase.total.toFixed(2)}
                             </p>
                             <button
@@ -142,7 +142,7 @@ function PurchaseHistory() {
                                         value={editForm.category}
                                         onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                                     >
-                                        {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                                        {categories.map(cat => <option key={cat.id} value={cat.name}>{cat.name}</option>)}
                                     </select>
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-sm)' }}>
@@ -169,7 +169,7 @@ function PurchaseHistory() {
                                         onChange={(e) => setEditForm({ ...editForm, isPromotion: e.target.checked })}
                                         style={{ width: '18px', height: '18px' }}
                                     />
-                                    <label htmlFor="editIsPromotionHistory" style={{ fontWeight: 600, color: 'var(--emerald-700)', fontSize: '14px' }}>Item em Promoção</label>
+                                    <label htmlFor="editIsPromotionHistory" style={{ fontWeight: 700, color: 'var(--primary-700)', fontSize: '14px' }}>Item em Promoção</label>
                                 </div>
                                 <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-sm)' }}>
                                     <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSaveEdit}>
@@ -188,7 +188,7 @@ function PurchaseHistory() {
                                     </h4>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xs)' }}>
                                         <span className="badge badge-success">{item.category}</span>
-                                        {item.isPromotion && <span className="badge" style={{ background: 'var(--emerald-100)', color: 'var(--emerald-700)', fontWeight: 700 }}>🎁 PROMO</span>}
+                                        {item.isPromotion && <span className="badge" style={{ background: 'var(--primary-100)', color: 'var(--primary-700)', fontWeight: 700 }}>🎁 PROMO</span>}
                                         {item.brand && (
                                             <span style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>
                                                 {item.brand}
@@ -201,7 +201,7 @@ function PurchaseHistory() {
                                     </p>
                                 </div>
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--spacing-sm)' }}>
-                                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
                                         R$ {(item.price * (item.weight || 1)).toFixed(2)}
                                     </p>
                                     <button
@@ -213,7 +213,7 @@ function PurchaseHistory() {
                                     </button>
                                     <button
                                         className="btn btn-secondary"
-                                        style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', minHeight: 'auto', color: 'var(--ef4444)' }}
+                                        style={{ padding: 'var(--spacing-xs) var(--spacing-sm)', minHeight: 'auto', color: 'var(--danger)' }}
                                         onClick={() => handleDeleteItem(item.id)}
                                     >
                                         <Trash2 size={16} /> Excluir
@@ -265,7 +265,7 @@ function PurchaseHistory() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
                                 <div style={{ textAlign: 'right' }}>
                                     <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>Total</p>
-                                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
                                         R$ {purchase.total.toFixed(2)}
                                     </p>
                                 </div>

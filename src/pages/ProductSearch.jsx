@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, TrendingDown, Calendar, Store as StoreIcon } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, Calendar, Store as StoreIcon, Edit2, Tag, Layers, Package, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { getProductHistory, getAllPurchaseItems, getAllStores, getAllPurchases } from '../db';
+import { getProductHistory, getAllPurchaseItems, getAllStores, getAllPurchases, getAllProducts, updateProduct, getAllCategories } from '../db';
 import { format } from 'date-fns';
 
 function ProductSearch() {
@@ -11,27 +11,43 @@ function ProductSearch() {
     const [allProducts, setAllProducts] = useState([]);
     const [stores, setStores] = useState([]);
     const [purchases, setPurchases] = useState([]);
+    const [categories, setCategories] = useState([]);
+
+    // Edit state
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editCategory, setEditCategory] = useState('');
+    const [editUnit, setEditUnit] = useState('');
 
     useEffect(() => {
         loadProducts();
     }, []);
 
     const loadProducts = async () => {
-        const items = await getAllPurchaseItems();
-        const storeList = await getAllStores();
-        const purchaseList = await getAllPurchases();
+        const [items, storeList, purchaseList, catList, catalogProds] = await Promise.all([
+            getAllPurchaseItems(),
+            getAllStores(),
+            getAllPurchases(),
+            getAllCategories(),
+            getAllProducts()
+        ]);
 
-        // Get unique products
-        const uniqueProducts = [...new Set(items.map(item => item.productName))];
-        setAllProducts(uniqueProducts);
+        setAllProducts(catalogProds);
         setStores(storeList);
         setPurchases(purchaseList);
+        setCategories(catList);
     };
 
-    const handleSearch = async () => {
-        if (!searchTerm) return;
+    const handleSelectProduct = (name) => {
+        setSearchTerm(name);
+        handleSearch(name);
+    };
 
-        const history = await getProductHistory(searchTerm);
+    const handleSearch = async (nameOverride) => {
+        const query = nameOverride || searchTerm;
+        if (!query) return;
+
+        const history = await getProductHistory(query);
 
         // Enrich with store and purchase data
         const enrichedHistory = history.map(item => {
@@ -47,6 +63,30 @@ function ProductSearch() {
         setProductHistory(enrichedHistory);
         if (enrichedHistory.length > 0) {
             setSelectedProduct(enrichedHistory[0].productName);
+        } else {
+            setSelectedProduct(query);
+        }
+    };
+
+    const handleEditProduct = (product) => {
+        setEditingProduct(product);
+        setEditName(product.name);
+        setEditCategory(product.category);
+        setEditUnit(product.unit);
+    };
+
+    const saveEdit = async () => {
+        try {
+            await updateProduct(editingProduct.id, {
+                name: editName,
+                category: editCategory,
+                unit: editUnit
+            });
+            setEditingProduct(null);
+            loadProducts();
+            if (selectedProduct) handleSearch(editName);
+        } catch (error) {
+            alert('Erro ao salvar: ' + error.message);
         }
     };
 
@@ -77,7 +117,7 @@ function ProductSearch() {
     };
 
     const filteredProducts = allProducts.filter(product =>
-        product.toLowerCase().includes(searchTerm.toLowerCase())
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -128,8 +168,8 @@ function ProductSearch() {
                             <button
                                 key={index}
                                 onClick={() => {
-                                    setSearchTerm(product);
-                                    handleSearch();
+                                    setSearchTerm(product.name);
+                                    handleSearch(product.name);
                                 }}
                                 style={{
                                     display: 'block',
@@ -143,10 +183,10 @@ function ProductSearch() {
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease'
                                 }}
-                                onMouseEnter={(e) => e.target.style.background = 'var(--emerald-50)'}
+                                onMouseEnter={(e) => e.target.style.background = 'var(--primary-50)'}
                                 onMouseLeave={(e) => e.target.style.background = 'white'}
                             >
-                                {product}
+                                {product.name}
                             </button>
                         ))}
                     </div>
@@ -158,11 +198,11 @@ function ProductSearch() {
                 <>
                     {/* Cards de Resumo */}
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-lg)' }}>
-                        <div className="card fade-in" style={{ background: 'var(--emerald-50)', borderLeft: '4px solid var(--emerald-500)' }}>
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)', marginBottom: 'var(--spacing-xs)' }}>
+                        <div className="card fade-in" style={{ background: 'var(--primary-50)', borderLeft: '4px solid var(--primary-500)' }}>
+                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)', marginBottom: 'var(--spacing-xs)', fontWeight: 600 }}>
                                 Menor Preço
                             </p>
-                            <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                            <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
                                 R$ {getLowestPrice()?.toFixed(2)}
                             </p>
                         </div>
@@ -177,16 +217,16 @@ function ProductSearch() {
                         </div>
 
                         <div className="card fade-in" style={{
-                            background: getPriceVariation() >= 0 ? '#fee2e2' : 'var(--emerald-50)',
-                            borderLeft: `4px solid ${getPriceVariation() >= 0 ? '#ef4444' : 'var(--emerald-500)'}`
+                            background: getPriceVariation() >= 0 ? '#fff1f2' : 'var(--primary-50)',
+                            borderLeft: `4px solid ${getPriceVariation() >= 0 ? 'var(--danger)' : 'var(--primary-500)'}`
                         }}>
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)', marginBottom: 'var(--spacing-xs)' }}>
+                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)', marginBottom: 'var(--spacing-xs)', fontWeight: 600 }}>
                                 Variação
                             </p>
                             <p style={{
                                 fontSize: 'var(--font-size-2xl)',
-                                fontWeight: 700,
-                                color: getPriceVariation() >= 0 ? '#dc2626' : 'var(--emerald-600)',
+                                fontWeight: 800,
+                                color: getPriceVariation() >= 0 ? 'var(--danger)' : 'var(--primary-600)',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 'var(--spacing-xs)'
@@ -218,8 +258,9 @@ function ProductSearch() {
                                 <Tooltip
                                     contentStyle={{
                                         background: 'white',
-                                        border: '2px solid var(--emerald-500)',
-                                        borderRadius: 'var(--radius-md)'
+                                        border: '1px solid var(--primary-100)',
+                                        borderRadius: 'var(--radius-md)',
+                                        boxShadow: 'var(--shadow-md)'
                                     }}
                                     formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Preço']}
                                     labelFormatter={(label, payload) => {
@@ -232,9 +273,10 @@ function ProductSearch() {
                                 <Line
                                     type="monotone"
                                     dataKey="price"
-                                    stroke="var(--emerald-600)"
-                                    strokeWidth={3}
-                                    dot={{ fill: 'var(--emerald-600)', r: 6 }}
+                                    stroke="var(--primary-500)"
+                                    strokeWidth={4}
+                                    dot={{ fill: 'var(--primary-500)', r: 6, strokeWidth: 2, stroke: 'white' }}
+                                    activeDot={{ r: 8, strokeWidth: 0 }}
                                 />
                             </LineChart>
                         </ResponsiveContainer>
@@ -275,11 +317,11 @@ function ProductSearch() {
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
-                                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                                    <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
                                         R$ {item.price.toFixed(2)}
                                     </p>
                                     {item.price === getLowestPrice() && (
-                                        <span className="badge badge-success" style={{ marginTop: 'var(--spacing-xs)' }}>
+                                        <span className="badge badge-success" style={{ marginTop: 'var(--spacing-xs)', background: 'var(--primary-500)', color: 'white' }}>
                                             Menor Preço
                                         </span>
                                     )}
@@ -290,12 +332,103 @@ function ProductSearch() {
                 </>
             )}
 
-            {productHistory.length === 0 && searchTerm && (
-                <div className="card" style={{ textAlign: 'center', padding: 'var(--spacing-2xl)' }}>
-                    <Search size={64} color="var(--slate-300)" style={{ margin: '0 auto var(--spacing-md)' }} />
-                    <p style={{ fontSize: 'var(--font-size-lg)', color: 'var(--slate-500)' }}>
-                        Nenhum resultado encontrado para "{searchTerm}"
+            {productHistory.length === 0 && (
+                <div style={{ display: 'grid', gap: 'var(--spacing-md)' }}>
+                    <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)', fontWeight: 600, marginBottom: 'var(--spacing-xs)' }}>
+                        {searchTerm ? 'Resultados do Catálogo' : 'Explorar Catálogo'}
                     </p>
+                    {filteredProducts.length === 0 ? (
+                        <div className="card" style={{ textAlign: 'center', padding: 'var(--spacing-2xl)' }}>
+                            <Search size={64} color="var(--slate-300)" style={{ margin: '0 auto var(--spacing-md)' }} />
+                            <p style={{ color: 'var(--slate-500)' }}>Nenhum produto encontrado.</p>
+                        </div>
+                    ) : (
+                        filteredProducts.map(prod => (
+                            <div key={prod.id} className="card fade-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--spacing-md)' }}>
+                                <div onClick={() => handleSelectProduct(prod.name)} style={{ cursor: 'pointer', flex: 1 }}>
+                                    <h3 style={{ fontWeight: 600 }}>{prod.name}</h3>
+                                    <p style={{ fontSize: '10px', color: 'var(--slate-500)' }}>
+                                        {prod.category} • {prod.unit}
+                                    </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                                    <button
+                                        onClick={() => handleEditProduct(prod)}
+                                        className="btn btn-secondary"
+                                        style={{ padding: '8px', background: 'var(--slate-100)' }}
+                                    >
+                                        <Edit2 size={16} color="var(--slate-600)" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleSelectProduct(prod.name)}
+                                        className="btn btn-primary"
+                                        style={{ padding: '8px' }}
+                                    >
+                                        <ChevronRight size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
+
+            {/* Modal de Edição */}
+            {editingProduct && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: 'var(--spacing-md)'
+                }}>
+                    <div className="card fade-in" style={{ width: '100%', maxWidth: '400px' }}>
+                        <h3 style={{ marginBottom: 'var(--spacing-md)' }}>Editar Produto</h3>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 600 }}>Nome</label>
+                            <input
+                                className="input"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                            />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-sm)' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', fontWeight: 600 }}>Categoria</label>
+                                    <select
+                                        className="select"
+                                        value={editCategory}
+                                        onChange={(e) => setEditCategory(e.target.value)}
+                                    >
+                                        {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', fontWeight: 600 }}>Unidade</label>
+                                    <select
+                                        className="select"
+                                        value={editUnit}
+                                        onChange={(e) => setEditUnit(e.target.value)}
+                                    >
+                                        <option value="kg">kg</option>
+                                        <option value="un">un</option>
+                                        <option value="L">L</option>
+                                        <option value="ml">ml</option>
+                                        <option value="g">g</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 'var(--spacing-sm)', marginTop: 'var(--spacing-md)' }}>
+                                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setEditingProduct(null)}>Cancelar</button>
+                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={saveEdit}>Salvar</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

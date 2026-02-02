@@ -3,7 +3,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { TrendingUp, TrendingDown, DollarSign, Store as StoreIcon } from 'lucide-react';
 import { getMonthlyTotals, getCategoryTotals, getStoreRanking, getAllPurchases } from '../db';
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+const COLORS = ['#fb923c', '#f43f5e', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#d97706'];
 
 function Dashboard() {
     const [monthlyData, setMonthlyData] = useState([]);
@@ -47,30 +47,31 @@ function Dashboard() {
 
             {/* Cards de Resumo */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-xl)' }}>
-                <div className="card fade-in" style={{ background: 'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))', color: 'white' }}>
+                <div className="card fade-in" style={{ background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))', color: 'white', border: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
                         <DollarSign size={24} />
-                        <span style={{ fontSize: 'var(--font-size-sm)', opacity: 0.9 }}>Total Gasto</span>
+                        <span style={{ fontSize: 'var(--font-size-sm)', opacity: 0.9, fontWeight: 600 }}>Total Gasto</span>
                     </div>
-                    <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700 }}>
+                    <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800 }}>
                         R$ {totalSpent.toFixed(2)}
                     </p>
                 </div>
 
                 <div className="card fade-in" style={{
                     background: inflationRate >= 0
-                        ? 'linear-gradient(135deg, #ef4444, #dc2626)'
-                        : 'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))',
-                    color: 'white'
+                        ? 'linear-gradient(135deg, #f43f5e, #e11d48)'
+                        : 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
+                    color: 'white',
+                    border: 'none'
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-sm)' }}>
                         {inflationRate >= 0 ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
-                        <span style={{ fontSize: 'var(--font-size-sm)', opacity: 0.9 }}>Inflação Pessoal</span>
+                        <span style={{ fontSize: 'var(--font-size-sm)', opacity: 0.9, fontWeight: 600 }}>Inflação Pessoal</span>
                     </div>
-                    <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 700 }}>
+                    <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800 }}>
                         {inflationRate >= 0 ? '+' : ''}{inflationRate.toFixed(1)}%
                     </p>
-                    <p style={{ fontSize: 'var(--font-size-sm)', opacity: 0.9, marginTop: 'var(--spacing-xs)' }}>
+                    <p style={{ fontSize: 'var(--font-size-sm)', opacity: 0.9, marginTop: 'var(--spacing-xs)', fontWeight: 500 }}>
                         {inflationRate >= 0 ? 'Seus gastos aumentaram' : 'Seus gastos diminuíram'}
                     </p>
                 </div>
@@ -97,18 +98,20 @@ function Dashboard() {
                             <Tooltip
                                 contentStyle={{
                                     background: 'white',
-                                    border: '2px solid var(--emerald-500)',
-                                    borderRadius: 'var(--radius-md)'
+                                    border: '1px solid var(--primary-100)',
+                                    borderRadius: 'var(--radius-md)',
+                                    boxShadow: 'var(--shadow-md)'
                                 }}
                             />
                             <Legend />
                             <Line
                                 type="monotone"
                                 dataKey="total"
-                                stroke="var(--emerald-600)"
-                                strokeWidth={3}
+                                stroke="var(--primary-500)"
+                                strokeWidth={4}
                                 name="Total (R$)"
-                                dot={{ fill: 'var(--emerald-600)', r: 6 }}
+                                dot={{ fill: 'var(--primary-500)', r: 6, strokeWidth: 2, stroke: 'white' }}
+                                activeDot={{ r: 8, strokeWidth: 0 }}
                             />
                         </LineChart>
                     </ResponsiveContainer>
@@ -157,8 +160,8 @@ function Dashboard() {
                                         borderLeft: `4px solid ${COLORS[index % COLORS.length]}`
                                     }}
                                 >
-                                    <span style={{ fontWeight: 600 }}>{cat.category}</span>
-                                    <span style={{ color: 'var(--emerald-600)', fontWeight: 700 }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--slate-700)' }}>{cat.category}</span>
+                                    <span style={{ color: 'var(--primary-600)', fontWeight: 700 }}>
                                         R$ {cat.total.toFixed(2)}
                                     </span>
                                 </div>
@@ -184,9 +187,9 @@ function Dashboard() {
                                 alignItems: 'center',
                                 padding: 'var(--spacing-md)',
                                 marginBottom: 'var(--spacing-sm)',
-                                background: index === 0 ? 'var(--emerald-50)' : 'var(--slate-50)',
+                                background: index === 0 ? 'var(--primary-50)' : 'var(--slate-50)',
                                 borderRadius: 'var(--radius-md)',
-                                border: index === 0 ? '2px solid var(--emerald-500)' : 'none'
+                                border: index === 0 ? '2px solid var(--primary-200)' : 'none'
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
@@ -195,7 +198,7 @@ function Dashboard() {
                                         width: '40px',
                                         height: '40px',
                                         borderRadius: '50%',
-                                        background: index === 0 ? 'var(--emerald-500)' : 'var(--slate-300)',
+                                        background: index === 0 ? 'var(--primary-500)' : 'var(--slate-300)',
                                         color: 'white',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -214,8 +217,8 @@ function Dashboard() {
                                 </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>Média por compra</p>
-                                <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)' }}>Média por compra</p>
+                                <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-700)' }}>
                                     R$ {store.averageSpent.toFixed(2)}
                                 </p>
                             </div>

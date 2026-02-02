@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Smart Price Tracker',
-        short_name: 'Price Tracker',
-        description: 'Controle de compras e comparação de preços histórico',
-        theme_color: '#10b981',
-        background_color: '#0f172a',
+        name: 'Jireh',
+        short_name: 'Jireh',
+        description: 'O provedor das suas economias no mercado',
+        theme_color: '#fb923c',
+        background_color: '#fffaf5',
         display: 'standalone',
         icons: [
           {

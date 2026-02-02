@@ -6,7 +6,8 @@ import {
     getShoppingListItems,
     addShoppingListItem,
     deleteShoppingListItem,
-    deleteShoppingList
+    deleteShoppingList,
+    getAllProducts
 } from '../db';
 
 function ShoppingList() {
@@ -114,10 +115,18 @@ function ShoppingList() {
 function ActiveListView({ list, onBack, onDelete }) {
     const [items, setItems] = useState([]);
     const [newItemName, setNewItemName] = useState('');
+    const [catalog, setCatalog] = useState([]);
+    const [suggestions, setSuggestions] = useState([]);
 
     useEffect(() => {
         loadItems();
+        loadCatalog();
     }, [list.id]);
+
+    const loadCatalog = async () => {
+        const prodList = await getAllProducts();
+        setCatalog(prodList);
+    };
 
     const loadItems = async () => {
         const listItems = await getShoppingListItems(list.id);
@@ -125,16 +134,45 @@ function ActiveListView({ list, onBack, onDelete }) {
     };
 
     const handleAddItem = async (e) => {
-        e.preventDefault();
+        if (e) e.preventDefault();
         if (!newItemName.trim()) return;
+
+        const product = catalog.find(p => p.name.toLowerCase() === newItemName.toLowerCase());
 
         await addShoppingListItem({
             listId: list.id,
             productName: newItemName,
-            unit: 'un'
+            unit: product?.unit || 'un'
         });
         setNewItemName('');
+        setSuggestions([]);
         loadItems();
+    };
+
+    const handleNameChange = (val) => {
+        setNewItemName(val);
+        if (val.length >= 2) {
+            const filtered = catalog.filter(p =>
+                p.name.toLowerCase().includes(val.toLowerCase())
+            );
+            setSuggestions(filtered.slice(0, 5));
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const selectSuggestion = (prod) => {
+        setNewItemName(prod.name);
+        setSuggestions([]);
+        // Auto-add when selecting suggestion
+        addShoppingListItem({
+            listId: list.id,
+            productName: prod.name,
+            unit: prod.unit || 'un'
+        }).then(() => {
+            setNewItemName('');
+            loadItems();
+        });
     };
 
     const handleDeleteItem = async (id) => {
@@ -159,23 +197,64 @@ function ActiveListView({ list, onBack, onDelete }) {
                         }
                     }}
                     className="btn btn-secondary"
-                    style={{ padding: 'var(--spacing-sm)', color: 'var(--ef4444)' }}
+                    style={{ padding: 'var(--spacing-sm)', color: 'var(--danger)' }}
                 >
                     <Trash2 size={20} />
                 </button>
             </div>
 
-            <form onSubmit={handleAddItem} style={{ display: 'flex', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-lg)' }}>
-                <input
-                    className="input"
-                    placeholder="O que você precisa comprar?"
-                    value={newItemName}
-                    onChange={(e) => setNewItemName(e.target.value)}
-                />
-                <button type="submit" className="btn btn-primary">
-                    <Plus />
-                </button>
-            </form>
+            <div style={{ position: 'relative', marginBottom: 'var(--spacing-lg)' }}>
+                <form onSubmit={handleAddItem} style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                    <input
+                        className="input"
+                        placeholder="O que você precisa comprar?"
+                        value={newItemName}
+                        onChange={(e) => handleNameChange(e.target.value)}
+                        autoComplete="off"
+                    />
+                    <button type="submit" className="btn btn-primary">
+                        <Plus />
+                    </button>
+                </form>
+
+                {suggestions.length > 0 && (
+                    <div style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        backgroundColor: 'white',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: 'var(--shadow-lg)',
+                        zIndex: 100,
+                        marginTop: '4px',
+                        border: '1px solid var(--slate-100)',
+                        overflow: 'hidden'
+                    }}>
+                        {suggestions.map(prod => (
+                            <div
+                                key={prod.id}
+                                onClick={() => selectSuggestion(prod)}
+                                style={{
+                                    padding: 'var(--spacing-md)',
+                                    cursor: 'pointer',
+                                    borderBottom: '1px solid var(--slate-50)',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}
+                                className="suggestion-item"
+                            >
+                                <div>
+                                    <span style={{ fontWeight: 500 }}>{prod.name}</span>
+                                    <p style={{ fontSize: '10px', color: 'var(--slate-400)' }}>{prod.category}</p>
+                                </div>
+                                <Plus size={14} color="var(--primary-500)" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-xl)' }}>
                 {items.length === 0 && (

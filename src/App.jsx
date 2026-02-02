@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, History, TrendingUp, Search, ClipboardList, Tag } from 'lucide-react';
+import { ShoppingCart, History, TrendingUp, Search, ClipboardList, Tag, Heart, Sparkles } from 'lucide-react';
 import NewPurchase from './pages/NewPurchase';
 import ShoppingList from './pages/ShoppingList';
 import PurchaseHistory from './pages/PurchaseHistory';
@@ -32,34 +32,43 @@ function App() {
 function Header() {
     return (
         <header style={{
-            background: 'linear-gradient(135deg, var(--emerald-600), var(--emerald-500))',
+            background: 'linear-gradient(135deg, var(--primary-600), var(--primary-500))',
             color: 'white',
-            padding: 'var(--spacing-lg)',
+            padding: 'var(--spacing-xl) var(--spacing-lg)',
             boxShadow: 'var(--shadow-lg)',
             position: 'sticky',
             top: 0,
-            zIndex: 100
+            zIndex: 100,
+            borderBottomLeftRadius: 'var(--radius-xl)',
+            borderBottomRightRadius: 'var(--radius-xl)',
         }}>
             <div className="container">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h1 style={{
-                        fontSize: 'var(--font-size-2xl)',
-                        fontWeight: 700,
+                        fontSize: '32px',
+                        fontWeight: 800,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 'var(--spacing-sm)'
+                        gap: 'var(--spacing-sm)',
+                        letterSpacing: '-1px'
                     }}>
-                        <ShoppingCart size={32} />
-                        Smart Price Tracker
+                        <div style={{ background: 'white', padding: '8px', borderRadius: '12px', display: 'flex' }}>
+                            <Heart size={28} color="var(--primary-600)" fill="var(--primary-600)" />
+                        </div>
+                        Jireh
                     </h1>
-                    <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>v1.1.0</span>
+                    <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>v2.0.0</span>
                 </div>
                 <p style={{
                     fontSize: 'var(--font-size-sm)',
                     opacity: 0.9,
-                    marginTop: 'var(--spacing-xs)'
+                    marginTop: 'var(--spacing-sm)',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
                 }}>
-                    Economize nas suas compras
+                    <Sparkles size={14} /> Feito para vocês economizarem juntos
                 </p>
             </div>
         </header>
@@ -106,18 +115,28 @@ function Navigation() {
                                 flexDirection: 'column',
                                 alignItems: 'center',
                                 gap: 'var(--spacing-xs)',
-                                padding: 'var(--spacing-md)',
+                                padding: 'var(--spacing-md) var(--spacing-xs)',
                                 textDecoration: 'none',
-                                color: isActive ? 'var(--emerald-600)' : 'var(--slate-500)',
-                                background: isActive ? 'var(--emerald-50)' : 'transparent',
-                                borderTop: isActive ? '3px solid var(--emerald-600)' : '3px solid transparent',
-                                transition: 'all 0.2s ease'
+                                color: isActive ? 'var(--primary-600)' : 'var(--slate-400)',
+                                transition: 'all 0.3s ease',
+                                position: 'relative'
                             }}
                         >
-                            <Icon size={24} />
-                            <span style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600 }}>
-                                {label}
-                            </span>
+                            <div style={{
+                                padding: '4px 16px',
+                                borderRadius: '16px',
+                                background: isActive ? 'var(--primary-100)' : 'transparent',
+                                color: isActive ? 'var(--primary-700)' : 'inherit',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '2px'
+                            }}>
+                                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                                <span style={{ fontSize: '10px', fontWeight: isActive ? 700 : 500 }}>
+                                    {label}
+                                </span>
+                            </div>
                         </Link>
                     );
                 })}

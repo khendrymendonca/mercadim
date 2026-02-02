@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Store, AlertCircle, TrendingDown, Calculator, ClipboardList, Check, Trash2, Edit2 } from 'lucide-react';
-import { addStore, getAllStores, addPurchase, addPurchaseItem, getLowestPrice, getAllShoppingLists, getShoppingListItems, deleteShoppingList } from '../db';
+import {
+    addStore,
+    getAllStores,
+    addPurchase,
+    addPurchaseItem,
+    getLowestPrice,
+    getAllShoppingLists,
+    getShoppingListItems,
+    deleteShoppingList,
+    getAllCategories,
+    getAllProducts
+} from '../db';
 import { format } from 'date-fns';
 
-const CATEGORIES = [
-    'Higiene',
-    'Bebidas',
-    'Mercearia',
-    'Padaria',
-    'Limpeza',
-    'Hortifruti',
-    'Açougue',
-    'Outros'
-];
+
 
 function NewPurchase() {
     const [stores, setStores] = useState([]);
@@ -31,6 +33,7 @@ function NewPurchase() {
         isPromotion: false
     });
     const [availableLists, setAvailableLists] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [selectedListId, setSelectedListId] = useState('');
     const [showNewStoreForm, setShowNewStoreForm] = useState(false);
     const [newStore, setNewStore] = useState({ name: '', address: '' });
@@ -44,7 +47,16 @@ function NewPurchase() {
         loadStores();
         loadLists();
         loadCatalog();
+        loadCategories();
     }, []);
+
+    const loadCategories = async () => {
+        const catList = await getAllCategories();
+        setCategories(catList);
+        if (catList.length > 0) {
+            setCurrentItem(prev => ({ ...prev, category: catList[0].name }));
+        }
+    };
 
     const loadCatalog = async () => {
         const prodList = await getAllProducts();
@@ -117,11 +129,13 @@ function NewPurchase() {
     const handleAddItem = () => {
         if (!currentItem.productName || !currentItem.price) return;
 
-        const pricePerUnit = calculatePricePerUnit();
+        const weight = parseFloat(currentItem.weight) || 1;
+        const totalPrice = parseFloat(currentItem.price);
+        const unitPrice = totalPrice / weight;
+
         const newItem = {
             ...currentItem,
-            price: parseFloat(currentItem.price),
-            pricePerUnit: pricePerUnit ? parseFloat(pricePerUnit) : null,
+            price: unitPrice, // Armazenamos o unitário para o histórico
             id: Date.now(),
             isPromotion: currentItem.isPromotion
         };
@@ -218,9 +232,12 @@ function NewPurchase() {
     };
 
     const handleQuickEdit = async (item) => {
+        const weight = item.weight || 1;
+        const totalPrice = item.price * weight; // Reverte para o preço do pacote para edição
+
         setShowEditModal(item);
-        setEditPrice(item.price || '');
-        setEditWeight(item.weight || '1');
+        setEditPrice(totalPrice.toFixed(2));
+        setEditWeight(weight.toString());
         setEditIsPromotion(item.isPromotion || false);
 
         // Buscar menor preço histórico para inteligência no mercado
@@ -229,10 +246,14 @@ function NewPurchase() {
     };
 
     const confirmQuickEdit = () => {
+        const weight = parseFloat(editWeight) || 1;
+        const totalPrice = parseFloat(editPrice);
+        const unitPrice = totalPrice / weight;
+
         setItems(items.map(i => i.id === showEditModal.id ? {
             ...i,
-            price: parseFloat(editPrice),
-            weight: parseFloat(editWeight),
+            price: unitPrice,
+            weight: weight,
             isPromotion: editIsPromotion
         } : i));
         setShowEditModal(null);
@@ -274,8 +295,8 @@ function NewPurchase() {
                     Cadastrar Novo Mercado
                 </button>
 
-                <div style={{ padding: 'var(--spacing-md)', background: 'var(--emerald-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--emerald-200)' }}>
-                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--spacing-sm)', color: 'var(--emerald-800)' }}>
+                <div style={{ padding: 'var(--spacing-md)', background: 'var(--primary-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary-100)' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--spacing-sm)', color: 'var(--primary-700)' }}>
                         <ClipboardList size={18} style={{ display: 'inline', marginRight: 'var(--spacing-xs)' }} />
                         Iniciar a partir de uma Lista
                     </label>
@@ -346,8 +367,8 @@ function NewPurchase() {
 
                 {lowestPriceInfo && (
                     <div style={{
-                        background: 'var(--emerald-50)',
-                        border: '2px solid var(--emerald-500)',
+                        background: 'var(--primary-50)',
+                        border: '2px solid var(--primary-200)',
                         borderRadius: 'var(--radius-md)',
                         padding: 'var(--spacing-md)',
                         marginBottom: 'var(--spacing-md)',
@@ -355,12 +376,12 @@ function NewPurchase() {
                         alignItems: 'center',
                         gap: 'var(--spacing-sm)'
                     }}>
-                        <TrendingDown size={24} color="var(--emerald-600)" />
+                        <TrendingDown size={24} color="var(--primary-600)" />
                         <div>
-                            <p style={{ fontWeight: 600, color: 'var(--emerald-700)' }}>
+                            <p style={{ fontWeight: 700, color: 'var(--primary-700)' }}>
                                 Menor preço histórico: R$ {lowestPriceInfo.price.toFixed(2)}
                             </p>
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--emerald-600)' }}>
+                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--primary-600)', fontWeight: 500 }}>
                                 {lowestPriceInfo.brand && `Marca: ${lowestPriceInfo.brand}`}
                             </p>
                         </div>
@@ -464,8 +485,8 @@ function NewPurchase() {
                     onChange={(e) => setCurrentItem({ ...currentItem, category: e.target.value })}
                     style={{ marginBottom: 'var(--spacing-sm)' }}
                 >
-                    {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                    {categories.map(cat => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
                     ))}
                 </select>
 
@@ -473,7 +494,7 @@ function NewPurchase() {
                     className="input"
                     type="number"
                     step="0.01"
-                    placeholder="Preço (R$)"
+                    placeholder="Preço Total do Pacote (R$)"
                     value={currentItem.price}
                     onChange={(e) => setCurrentItem({ ...currentItem, price: e.target.value })}
                     style={{ marginBottom: 'var(--spacing-md)' }}
@@ -487,7 +508,7 @@ function NewPurchase() {
                         onChange={(e) => setCurrentItem({ ...currentItem, isPromotion: e.target.checked })}
                         style={{ width: '20px', height: '20px' }}
                     />
-                    <label htmlFor="isPromotion" style={{ fontWeight: 600, color: 'var(--emerald-700)' }}>🏷️ Este item está em Promoção?</label>
+                    <label htmlFor="isPromotion" style={{ fontWeight: 600, color: 'var(--primary-700)' }}>🏷️ Este item está em Promoção?</label>
                 </div>
 
                 {pricePerUnit && (
@@ -501,8 +522,8 @@ function NewPurchase() {
                         gap: 'var(--spacing-sm)'
                     }}>
                         <Calculator size={20} color="var(--slate-600)" />
-                        <span style={{ fontWeight: 600 }}>
-                            Preço por {currentItem.unit}: R$ {pricePerUnit}
+                        <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
+                            Cálculo: R$ {pricePerUnit}/{currentItem.unit}
                         </span>
                     </div>
                 )}
@@ -528,7 +549,7 @@ function NewPurchase() {
                     {items.map(item => (
                         <div
                             key={item.id}
-                            onClick={() => item.price === null ? handleQuickEdit(item) : null}
+                            onClick={() => handleQuickEdit(item)}
                             style={{
                                 padding: 'var(--spacing-md)',
                                 background: item.price === null ? 'var(--slate-100)' : 'var(--slate-50)',
@@ -538,36 +559,45 @@ function NewPurchase() {
                                 display: 'flex',
                                 justifyContent: 'space-between',
                                 alignItems: 'center',
-                                cursor: item.price === null ? 'pointer' : 'default'
+                                cursor: 'pointer'
                             }}
                         >
                             <div style={{ flex: 1 }}>
                                 <p style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                                     {item.productName}
-                                    {item.isPromotion && <span style={{ fontSize: '10px', background: 'var(--emerald-500)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PROMO</span>}
-                                    {item.price === null && <span style={{ fontSize: '10px', background: 'var(--slate-400)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PENDENTE</span>}
+                                    {item.isPromotion && <span style={{ fontSize: '10px', background: 'var(--primary-500)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>PROMO</span>}
+                                    {item.price === null && <span style={{ fontSize: '10px', background: 'var(--slate-400)', color: 'white', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>PENDENTE</span>}
                                 </p>
                                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>
                                     {item.brand} • {item.weight}{item.unit} • {item.category}
                                 </p>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                                 {item.price !== null ? (
-                                    <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                                    <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 800, color: 'var(--primary-600)' }}>
                                         R$ {(item.price * (item.weight || 1)).toFixed(2)}
                                     </span>
                                 ) : (
                                     <div style={{ color: 'var(--slate-400)', fontSize: 'var(--font-size-sm)' }}>
-                                        Clique para lançar <Edit2 size={14} style={{ display: 'inline' }} />
+                                        Pendente <Edit2 size={14} style={{ display: 'inline' }} />
                                     </div>
                                 )}
-                                <button
-                                    className="btn btn-danger"
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveItem(item.id); }}
-                                    style={{ padding: 'var(--spacing-sm)' }}
-                                >
-                                    ✕
-                                </button>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={(e) => { e.stopPropagation(); handleQuickEdit(item); }}
+                                        style={{ padding: 'var(--spacing-sm)', background: 'var(--slate-200)' }}
+                                    >
+                                        <Edit2 size={14} />
+                                    </button>
+                                    <button
+                                        className="btn btn-danger"
+                                        onClick={(e) => { e.stopPropagation(); handleRemoveItem(item.id); }}
+                                        style={{ padding: 'var(--spacing-sm)' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -575,7 +605,7 @@ function NewPurchase() {
                     <div style={{
                         marginTop: 'var(--spacing-lg)',
                         padding: 'var(--spacing-lg)',
-                        background: 'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))',
+                        background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
                         borderRadius: 'var(--radius-lg)',
                         color: 'white'
                     }}>
@@ -611,13 +641,13 @@ function NewPurchase() {
 
                         {lowestPriceInfo && (
                             <div style={{
-                                background: 'var(--emerald-50)',
-                                border: '1px solid var(--emerald-200)',
-                                borderRadius: 'var(--radius-sm)',
-                                padding: 'var(--spacing-sm)',
+                                background: 'var(--primary-50)',
+                                border: '1px solid var(--primary-100)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: 'var(--spacing-md)',
                                 marginBottom: 'var(--spacing-md)',
                                 fontSize: 'var(--font-size-sm)',
-                                color: 'var(--emerald-700)',
+                                color: 'var(--primary-700)',
                                 textAlign: 'center'
                             }}>
                                 📉 Menor histórico: <strong>R$ {lowestPriceInfo.price.toFixed(2)}</strong>
@@ -627,7 +657,7 @@ function NewPurchase() {
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px' }}>Preço Unitário</label>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', fontWeight: 600 }}>Preço Total (Pacote)</label>
                                 <input
                                     className="input"
                                     type="number"
@@ -638,7 +668,7 @@ function NewPurchase() {
                                 />
                             </div>
                             <div>
-                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px' }}>Quantidade/Peso</label>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px', fontWeight: 600 }}>Qtd / Peso</label>
                                 <input
                                     className="input"
                                     type="number"
@@ -647,6 +677,31 @@ function NewPurchase() {
                                     placeholder="1"
                                 />
                             </div>
+                        </div>
+
+                        {(parseFloat(editPrice) > 0 && parseFloat(editWeight) > 0) && (
+                            <div style={{
+                                background: 'white',
+                                padding: '8px',
+                                borderRadius: '8px',
+                                marginBottom: '15px',
+                                textAlign: 'center',
+                                border: '1px solid var(--slate-100)',
+                                fontSize: '12px'
+                            }}>
+                                💡 Sai por: <strong>R$ {(parseFloat(editPrice) / parseFloat(editWeight)).toFixed(2)} / {showEditModal.unit}</strong>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)', marginBottom: 'var(--spacing-md)' }}>
+                            <input
+                                type="checkbox"
+                                id="editIsPromotionModal"
+                                checked={editIsPromotion}
+                                onChange={(e) => setEditIsPromotion(e.target.checked)}
+                                style={{ width: '18px', height: '18px' }}
+                            />
+                            <label htmlFor="editIsPromotionModal" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary-700)' }}>🏷️ Marcar como Promoção</label>
                         </div>
 
                         <div style={{ display: 'flex', gap: '10px' }}>
