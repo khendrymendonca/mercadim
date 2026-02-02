@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Store as StoreIcon, Calendar, Wallet, PieChart as PieIcon, BarChart3, ChevronRight, Edit3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Store as StoreIcon, Calendar, Wallet, PieChart as PieIcon, BarChart3, ChevronRight } from 'lucide-react';
 import { getMonthlyTotals, getCategoryTotals, getStoreRanking, getAllPurchases, getMealAllowance, setMealAllowance } from '../db';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -13,11 +14,9 @@ function Dashboard() {
     const [storeRanking, setStoreRanking] = useState([]);
     const [inflationRate, setInflationRate] = useState(0);
     const [totalSpent, setTotalSpent] = useState(0);
-    const [period, setPeriod] = useState('current_month'); // 'current_month', 'last_month', 'last_3_months', 'all'
+    const [period, setPeriod] = useState('current_month');
     const [allPurchases, setAllPurchases] = useState([]);
     const [vaAmount, setVaAmount] = useState(0);
-    const [showVaEdit, setShowVaEdit] = useState(false);
-    const [tempVa, setTempVa] = useState('');
 
     useEffect(() => {
         loadDashboardData();
@@ -94,19 +93,6 @@ function Dashboard() {
         }
     };
 
-    const handleSaveVa = async () => {
-        const amount = parseFloat(tempVa);
-        if (isNaN(amount)) return;
-
-        const monthKey = period === 'last_month'
-            ? format(subMonths(new Date(), 1), 'yyyy-MM')
-            : getCurrentMonthKey();
-
-        await setMealAllowance(monthKey, amount);
-        setVaAmount(amount);
-        setShowVaEdit(false);
-    };
-
     return (
         <div className="container" style={{ paddingTop: 'var(--spacing-lg)', paddingBottom: 'var(--spacing-2xl)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-lg)', flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
@@ -139,48 +125,33 @@ function Dashboard() {
                         </div>
                         <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>Vale Alimentação</h3>
                     </div>
-                    <button
-                        onClick={() => { setTempVa(vaAmount); setShowVaEdit(true); }}
+                    <Link
+                        to="/va"
                         className="btn btn-secondary"
-                        style={{ padding: '6px 12px', minHeight: 'auto', fontSize: '12px' }}
+                        style={{ padding: '6px 12px', minHeight: 'auto', fontSize: '12px', textDecoration: 'none' }}
                     >
-                        <Edit3 size={14} /> Configurar
-                    </button>
+                        Configurar
+                    </Link>
                 </div>
 
-                {showVaEdit ? (
-                    <div style={{ display: 'flex', gap: 'var(--spacing-sm)', alignItems: 'center' }} className="fade-in">
-                        <input
-                            type="number"
-                            className="input"
-                            placeholder="Valor recebido (R$)"
-                            value={tempVa}
-                            onChange={(e) => setTempVa(e.target.value)}
-                            autoFocus
-                        />
-                        <button className="btn btn-primary" onClick={handleSaveVa}>OK</button>
-                        <button className="btn btn-secondary" onClick={() => setShowVaEdit(false)}>X</button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--spacing-md)' }}>
+                    <div>
+                        <p style={{ fontSize: '12px', color: 'var(--slate-500)', marginBottom: '4px' }}>Recebido</p>
+                        <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--slate-800)' }}>R$ {vaAmount.toFixed(2)}</p>
                     </div>
-                ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--spacing-md)' }}>
-                        <div>
-                            <p style={{ fontSize: '12px', color: 'var(--slate-500)', marginBottom: '4px' }}>Recebido</p>
-                            <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--slate-800)' }}>R$ {vaAmount.toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '12px', color: 'var(--slate-500)', marginBottom: '4px' }}>Utilizado</p>
-                            <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>R$ {Math.min(totalSpent, vaAmount).toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <p style={{ fontSize: '12px', color: 'var(--slate-500)', marginBottom: '4px' }}>Saldo</p>
-                            <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: vaAmount - totalSpent >= 0 ? 'var(--primary-700)' : 'var(--accent-500)' }}>
-                                R$ {Math.max(0, vaAmount - totalSpent).toFixed(2)}
-                            </p>
-                        </div>
+                    <div>
+                        <p style={{ fontSize: '12px', color: 'var(--slate-500)', marginBottom: '4px' }}>Utilizado</p>
+                        <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>R$ {Math.min(totalSpent, vaAmount).toFixed(2)}</p>
                     </div>
-                )}
+                    <div>
+                        <p style={{ fontSize: '12px', color: 'var(--slate-500)', marginBottom: '4px' }}>Saldo</p>
+                        <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: vaAmount - totalSpent >= 0 ? 'var(--primary-700)' : 'var(--accent-500)' }}>
+                            R$ {Math.max(0, vaAmount - totalSpent).toFixed(2)}
+                        </p>
+                    </div>
+                </div>
 
-                {!showVaEdit && totalSpent > vaAmount && (
+                {totalSpent > vaAmount && (
                     <div style={{
                         marginTop: 'var(--spacing-md)',
                         padding: '10px',

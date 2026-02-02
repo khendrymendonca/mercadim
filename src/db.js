@@ -523,3 +523,13 @@ export const setMealAllowance = async (monthYear, amount) => {
     if (error) throw error;
     return data;
 };
+
+export const getAllMealAllowances = async () => {
+    const { data, error } = await supabase
+        .from('meal_allowances')
+        .select('*')
+        .order('month_year', { ascending: false });
+
+    if (error) throw error;
+    return data;
+};

@@ -7,6 +7,7 @@ import PurchaseHistory from './pages/PurchaseHistory';
 import Dashboard from './pages/Dashboard';
 import ProductSearch from './pages/ProductSearch';
 import Catalog from './pages/Catalog';
+import MealAllowance from './pages/MealAllowance';
 
 function App() {
     return (
@@ -21,6 +22,7 @@ function App() {
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/search" element={<ProductSearch />} />
                         <Route path="/catalog" element={<Catalog />} />
+                        <Route path="/va" element={<MealAllowance />} />
                     </Routes>
                 </main>
                 <Navigation />
@@ -52,7 +54,9 @@ function Header() {
                         gap: 'var(--spacing-sm)',
                         letterSpacing: '-1px'
                     }}>
-                        <img src="/logo.png" alt="Jireh Logo" style={{ width: '42px', height: '42px', borderRadius: '12px', objectFit: 'cover', background: 'white', padding: '2px' }} />
+                        <div style={{ background: 'white', padding: '8px', borderRadius: '12px', display: 'flex' }}>
+                            <Heart size={28} color="var(--primary-600)" fill="var(--primary-600)" />
+                        </div>
                         Jireh
                     </h1>
                     <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '10px', fontWeight: 600 }}>v2.0.0</span>
@@ -73,16 +77,18 @@ function Header() {
     );
 }
 
+import { Wallet } from 'lucide-react';
+
 function Navigation() {
     const location = useLocation();
 
     const navItems = [
-        { path: '/', icon: ShoppingCart, label: 'Nova Compra' },
-        { path: '/list', icon: ClipboardList, label: 'Listas' },
+        { path: '/', icon: ShoppingCart, label: 'Compra' },
         { path: '/history', icon: History, label: 'Histórico' },
-        { path: '/dashboard', icon: TrendingUp, label: 'Dashboard' },
-        { path: '/search', icon: Search, label: 'Consulta' },
-        { path: '/catalog', icon: Tag, label: 'Gerenciar' }
+        { path: '/va', icon: Wallet, label: 'Vale' },
+        { path: '/dashboard', icon: TrendingUp, label: 'Métricas' },
+        { path: '/search', icon: Search, label: 'Busca' },
+        { path: '/catalog', icon: Tag, label: 'Adm' }
     ];
 
     return (
