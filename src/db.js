@@ -137,20 +137,7 @@ export const getStoreById = async (id) => {
 };
 
 // Purchase Operations
-export const addPurchase = async (purchase) => {
-    const { data, error } = await supabase
-        .from('purchases')
-        .insert([{
-            date: purchase.date,
-            store_id: purchase.storeId,
-            total: purchase.total
-        }])
-        .select()
-        .single();
 
-    if (error) throw error;
-    return data.id;
-};
 
 export const getAllPurchases = async () => {
     const { data, error } = await supabase
@@ -187,7 +174,38 @@ export const deletePurchase = async (id) => {
     if (error) throw error;
 };
 
-// Purchase Item Operations
+export const addPurchase = async (storeId, date, total, items, paymentMethod = 'va') => {
+    // 1. Create Purchase record
+    const { data: purchaseData, error: purchaseError } = await supabase
+        .from('purchases')
+        .insert({ store_id: storeId, date, total, payment_method: paymentMethod })
+        .select()
+        .single();
+
+    if (purchaseError) throw purchaseError;
+    const purchaseId = purchaseData.id;
+
+    // 2. Prepare and Insert Items
+    const itemsToInsert = items.map(item => ({
+        purchase_id: purchaseId,
+        product_name: item.productName,
+        brand: item.brand,
+        category: item.category,
+        weight: parseFloat(item.weight) || 1,
+        unit: item.unit,
+        price: parseFloat(item.price),
+        date: date
+    }));
+
+    const { error: itemsError } = await supabase
+        .from('purchase_items')
+        .insert(itemsToInsert);
+
+    if (itemsError) throw itemsError;
+
+    return purchaseId;
+};
+
 export const addPurchaseItem = async (item) => {
     const { error } = await supabase
         .from('purchase_items')
@@ -507,9 +525,9 @@ export const getMealAllowance = async (monthYear) => {
         .from('meal_allowances')
         .select('*')
         .eq('month_year', monthYear)
-        .single();
+        .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error) throw error;
     return data;
 };
 

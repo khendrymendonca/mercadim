@@ -3,6 +3,7 @@ import { Wallet, Plus, Trash2, Calendar, Check, X, Edit2 } from 'lucide-react';
 import { getAllMealAllowances, setMealAllowance } from '../db';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { formatCurrency } from '../utils/format';
 
 function MealAllowance() {
     const [allowances, setAllowances] = useState([]);
@@ -111,7 +112,7 @@ function MealAllowance() {
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--primary-700)' }}>
-                                    R$ {parseFloat(allowance.amount).toFixed(2)}
+                                    {formatCurrency(parseFloat(allowance.amount))}
                                 </p>
                                 <button
                                     onClick={() => {

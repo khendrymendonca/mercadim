@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Store as StoreIcon, ChevronRight, Package, Edit2, Check, X, Tag, Trash2 } from 'lucide-react';
 import { getAllPurchases, getAllStores, getPurchaseItems, updatePurchaseItem, deletePurchase, deletePurchaseItem, getPurchaseById, getAllCategories } from '../db';
 import { format } from 'date-fns';
+import { formatCurrency } from '../utils/format';
 import { ptBR } from 'date-fns/locale';
 
 function PurchaseHistory() {
@@ -103,7 +104,7 @@ function PurchaseHistory() {
                         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--spacing-xs)' }}>
                             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>Total</p>
                             <p style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
-                                R$ {selectedPurchase.total.toFixed(2)}
+                                {formatCurrency(selectedPurchase.total)}
                             </p>
                             <button
                                 className="btn btn-danger"
@@ -202,7 +203,7 @@ function PurchaseHistory() {
                                 </div>
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 'var(--spacing-sm)' }}>
                                     <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
-                                        R$ {(item.price * (item.weight || 1)).toFixed(2)}
+                                        {formatCurrency(item.price * (item.weight || 1))}
                                     </p>
                                     <button
                                         className="btn btn-secondary"
@@ -266,7 +267,7 @@ function PurchaseHistory() {
                                 <div style={{ textAlign: 'right' }}>
                                     <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>Total</p>
                                     <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
-                                        R$ {purchase.total.toFixed(2)}
+                                        {formatCurrency(purchase.total)}
                                     </p>
                                 </div>
                                 <ChevronRight size={24} color="var(--slate-400)" />

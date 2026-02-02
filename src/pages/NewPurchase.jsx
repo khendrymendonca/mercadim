@@ -4,7 +4,6 @@ import {
     addStore,
     getAllStores,
     addPurchase,
-    addPurchaseItem,
     getLowestPrice,
     getAllShoppingLists,
     getShoppingListItems,
@@ -13,6 +12,7 @@ import {
     getAllProducts
 } from '../db';
 import { format } from 'date-fns';
+import { formatCurrency } from '../utils/format';
 
 
 
@@ -41,7 +41,11 @@ function NewPurchase() {
     const [showEditModal, setShowEditModal] = useState(null);
     const [editPrice, setEditPrice] = useState('');
     const [editWeight, setEditWeight] = useState('');
+
     const [editIsPromotion, setEditIsPromotion] = useState(false);
+
+    // Novo Estado de Pagamento
+    const [paymentMethod, setPaymentMethod] = useState('va'); // 'va' or 'personal'
 
     useEffect(() => {
         loadStores();
@@ -185,32 +189,11 @@ function NewPurchase() {
 
             console.log('Calculando total:', total);
 
-            const purchaseData = {
-                date: purchaseDate,
-                storeId: parseInt(selectedStore),
-                total: parseFloat(total.toFixed(2))
-            };
+            const finalTotal = parseFloat(total.toFixed(2));
+            const storeId = parseInt(selectedStore);
 
-            const purchaseId = await addPurchase(purchaseData);
+            const purchaseId = await addPurchase(storeId, purchaseDate, finalTotal, validItems, paymentMethod);
             console.log('Compra criada com ID:', purchaseId);
-
-            for (const item of validItems) {
-                // Criamos uma cópia limpa SEM o ID temporário do frontend
-                const cleanItem = {
-                    productName: item.productName || 'Sem nome',
-                    brand: item.brand || '',
-                    weight: parseFloat(item.weight) || 1,
-                    unit: item.unit || 'un',
-                    category: item.category || 'Outros',
-                    price: parseFloat(item.price) || 0,
-                    purchaseId: purchaseId,
-                    date: purchaseDate,
-                    isPromotion: item.isPromotion || false
-                };
-
-                await addPurchaseItem(cleanItem);
-                console.log('Item salvo:', cleanItem.productName);
-            }
 
             // Limpa listas se houver itens planejados
             if (items.some(i => i.isPlanned)) {
@@ -378,8 +361,8 @@ function NewPurchase() {
                     }}>
                         <TrendingDown size={24} color="var(--primary-600)" />
                         <div>
-                            <p style={{ fontWeight: 700, color: 'var(--primary-700)' }}>
-                                Menor preço histórico: R$ {lowestPriceInfo.price.toFixed(2)}
+                            <p style={{ fontWeight: 800, fontSize: 'var(--font-size-xl)' }}>
+                                {formatCurrency(lowestPriceInfo.price)}
                             </p>
                             <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--primary-600)', fontWeight: 500 }}>
                                 {lowestPriceInfo.brand && `Marca: ${lowestPriceInfo.brand}`}
@@ -523,7 +506,7 @@ function NewPurchase() {
                     }}>
                         <Calculator size={20} color="var(--slate-600)" />
                         <span style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600 }}>
-                            Cálculo: R$ {pricePerUnit}/{currentItem.unit}
+                            Cálculo: {formatCurrency(pricePerUnit)}/{currentItem.unit}
                         </span>
                     </div>
                 )}
@@ -575,7 +558,7 @@ function NewPurchase() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-sm)' }}>
                                 {item.price !== null ? (
                                     <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 800, color: 'var(--primary-600)' }}>
-                                        R$ {(item.price * (item.weight || 1)).toFixed(2)}
+                                        {formatCurrency(item.price * (item.weight || 1))}
                                     </span>
                                 ) : (
                                     <div style={{ color: 'var(--slate-400)', fontSize: 'var(--font-size-sm)' }}>
@@ -609,8 +592,12 @@ function NewPurchase() {
                         borderRadius: 'var(--radius-lg)',
                         color: 'white'
                     }}>
-                        <p style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-xs)' }}>Total da Compra</p>
-                        <p style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 700 }}>R$ {items.reduce((sum, i) => sum + ((i.price || 0) * (i.weight || 1)), 0).toFixed(2)}</p>
+                        <div style={{ textAlign: 'right' }}>
+                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)', fontWeight: 600 }}>Total da Compra</p>
+                            <p style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 900, color: 'var(--primary-600)', letterSpacing: '-1px' }}>
+                                {formatCurrency(items.reduce((sum, i) => sum + ((i.price || 0) * (i.weight || 1)), 0))}
+                            </p>
+                        </div>
                     </div>
 
                     <button

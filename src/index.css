@@ -252,6 +252,31 @@ body {
   }
 
   .container {
-    padding: 0 var(--spacing-sm);
+    padding: 0 var(--spacing-md);
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --spacing-md: 0.75rem;
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.5rem;
+    --font-size-base: 0.9375rem;
+  }
+
+  .btn {
+    width: 100%;
+    margin-bottom: var(--spacing-sm);
+  }
+
+  /* Ajuste para inputs ficarem lado a lado se estiverem em flex container, senao width 100% */
+  /* Mas cuidado com botoes que precisam estar inline. */
+
+  .card {
+    padding: var(--spacing-md);
+  }
+
+  h1 {
+    font-size: 1.5rem !important;
   }
 }

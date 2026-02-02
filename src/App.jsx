@@ -84,6 +84,7 @@ function Navigation() {
 
     const navItems = [
         { path: '/', icon: ShoppingCart, label: 'Compra' },
+        { path: '/list', icon: ClipboardList, label: 'Lista' },
         { path: '/history', icon: History, label: 'Histórico' },
         { path: '/va', icon: Wallet, label: 'Vale' },
         { path: '/dashboard', icon: TrendingUp, label: 'Métricas' },
@@ -104,7 +105,7 @@ function Navigation() {
         }}>
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(6, 1fr)',
+                gridTemplateColumns: 'repeat(7, 1fr)',
                 maxWidth: '1200px',
                 margin: '0 auto'
             }}>
@@ -127,8 +128,8 @@ function Navigation() {
                             }}
                         >
                             <div style={{
-                                padding: '4px 16px',
-                                borderRadius: '16px',
+                                padding: '4px 8px',
+                                borderRadius: '12px',
                                 background: isActive ? 'var(--primary-100)' : 'transparent',
                                 color: isActive ? 'var(--primary-700)' : 'inherit',
                                 display: 'flex',
@@ -136,8 +137,8 @@ function Navigation() {
                                 alignItems: 'center',
                                 gap: '2px'
                             }}>
-                                <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                                <span style={{ fontSize: '10px', fontWeight: isActive ? 700 : 500 }}>
+                                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                                <span className="nav-label" style={{ fontSize: '9px', fontWeight: isActive ? 700 : 500 }}>
                                     {label}
                                 </span>
                             </div>

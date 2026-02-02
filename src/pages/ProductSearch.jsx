@@ -3,6 +3,7 @@ import { Search, TrendingUp, TrendingDown, Calendar, Store as StoreIcon, Edit2, 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getProductHistory, getAllPurchaseItems, getAllStores, getAllPurchases, getAllProducts, updateProduct, getAllCategories } from '../db';
 import { format } from 'date-fns';
+import { formatCurrency } from '../utils/format';
 
 function ProductSearch() {
     const [searchTerm, setSearchTerm] = useState('');
@@ -53,10 +54,15 @@ function ProductSearch() {
         const enrichedHistory = history.map(item => {
             const purchase = purchases.find(p => p.id === item.purchaseId);
             const store = stores.find(s => s.id === purchase?.storeId);
+
+            // Fallback: use item.date if purchase.date is not found
+            // Ensure date is valid or use current date as fallback to prevent crash
+            const finalDate = purchase?.date || item.date || new Date().toISOString();
+
             return {
                 ...item,
                 storeName: store?.name || 'Desconhecido',
-                purchaseDate: purchase?.date
+                purchaseDate: finalDate
             };
         });
 
@@ -91,12 +97,22 @@ function ProductSearch() {
     };
 
     const getChartData = () => {
-        return productHistory.map(item => ({
-            date: format(new Date(item.purchaseDate), 'dd/MM'),
-            price: item.price,
-            fullDate: format(new Date(item.purchaseDate), 'dd/MM/yyyy'),
-            store: item.storeName
-        })).reverse();
+        return productHistory.map(item => {
+            let dateObj;
+            try {
+                dateObj = new Date(item.purchaseDate);
+                if (isNaN(dateObj.getTime())) throw new Error('Invalid date');
+            } catch (e) {
+                dateObj = new Date();
+            }
+
+            return {
+                date: format(dateObj, 'dd/MM'),
+                price: item.price,
+                fullDate: format(dateObj, 'dd/MM/yyyy'),
+                store: item.storeName
+            };
+        }).reverse();
     };
 
     const getLowestPrice = () => {
@@ -203,7 +219,7 @@ function ProductSearch() {
                                 Menor Preço
                             </p>
                             <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
-                                R$ {getLowestPrice()?.toFixed(2)}
+                                {formatCurrency(getLowestPrice())}
                             </p>
                         </div>
 
@@ -212,7 +228,7 @@ function ProductSearch() {
                                 Maior Preço
                             </p>
                             <p style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: '#dc2626' }}>
-                                R$ {getHighestPrice()?.toFixed(2)}
+                                {formatCurrency(getHighestPrice())}
                             </p>
                         </div>
 
@@ -262,7 +278,7 @@ function ProductSearch() {
                                         borderRadius: 'var(--radius-md)',
                                         boxShadow: 'var(--shadow-md)'
                                     }}
-                                    formatter={(value) => [`R$ ${value.toFixed(2)}`, 'Preço']}
+                                    formatter={(value) => [formatCurrency(value), 'Preço']}
                                     labelFormatter={(label, payload) => {
                                         if (payload && payload[0]) {
                                             return `${payload[0].payload.fullDate} - ${payload[0].payload.store}`;
@@ -318,7 +334,7 @@ function ProductSearch() {
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <p style={{ fontSize: 'var(--font-size-xl)', fontWeight: 800, color: 'var(--primary-600)' }}>
-                                        R$ {item.price.toFixed(2)}
+                                        {formatCurrency(item.price)}
                                     </p>
                                     {item.price === getLowestPrice() && (
                                         <span className="badge badge-success" style={{ marginTop: 'var(--spacing-xs)', background: 'var(--primary-500)', color: 'white' }}>
