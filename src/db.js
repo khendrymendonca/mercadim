@@ -1,203 +1,337 @@
-import { openDB } from 'idb';
-
-const DB_NAME = 'SmartPriceTrackerDB';
-const DB_VERSION = 2; // Incrementado para adicionar novas stores
-
-export const initDB = async () => {
-    return openDB(DB_NAME, DB_VERSION, {
-        upgrade(db, oldVersion, newVersion, transaction) {
-            // Stores (Mercados)
-            if (!db.objectStoreNames.contains('stores')) {
-                const storeOS = db.createObjectStore('stores', { keyPath: 'id', autoIncrement: true });
-                storeOS.createIndex('name', 'name', { unique: false });
-            }
-
-            // Purchases (Compras)
-            if (!db.objectStoreNames.contains('purchases')) {
-                const purchaseOS = db.createObjectStore('purchases', { keyPath: 'id', autoIncrement: true });
-                purchaseOS.createIndex('date', 'date', { unique: false });
-                purchaseOS.createIndex('storeId', 'storeId', { unique: false });
-            }
-
-            // Purchase Items (Itens de Compra)
-            if (!db.objectStoreNames.contains('purchaseItems')) {
-                const itemOS = db.createObjectStore('purchaseItems', { keyPath: 'id', autoIncrement: true });
-                itemOS.createIndex('purchaseId', 'purchaseId', { unique: false });
-                itemOS.createIndex('productName', 'productName', { unique: false });
-                itemOS.createIndex('category', 'category', { unique: false });
-            }
-
-            // Shopping Lists (Listas de Compras)
-            if (!db.objectStoreNames.contains('shoppingLists')) {
-                const listOS = db.createObjectStore('shoppingLists', { keyPath: 'id', autoIncrement: true });
-                listOS.createIndex('name', 'name', { unique: false });
-                listOS.createIndex('createdAt', 'createdAt', { unique: false });
-                listOS.createIndex('status', 'status', { unique: false }); // 'active', 'completed'
-            }
-
-            // Shopping List Items (Itens da Lista)
-            if (!db.objectStoreNames.contains('shoppingListItems')) {
-                const listItemOS = db.createObjectStore('shoppingListItems', { keyPath: 'id', autoIncrement: true });
-                listItemOS.createIndex('listId', 'listId', { unique: false });
-                listItemOS.createIndex('productName', 'productName', { unique: false });
-            }
-        },
-    });
-};
+import { supabase } from './lib/supabase';
 
 // Store Operations
 export const addStore = async (store) => {
-    const db = await initDB();
-    return db.add('stores', store);
+    const { data, error } = await supabase
+        .from('stores')
+        .insert([{ name: store.name, address: store.address }])
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data.id;
 };
 
 export const getAllStores = async () => {
-    const db = await initDB();
-    return db.getAll('stores');
+    const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .order('name', { ascending: true });
+
+    if (error) throw error;
+    return data;
 };
 
 export const getStoreById = async (id) => {
-    const db = await initDB();
-    return db.get('stores', id);
+    const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) throw error;
+    return data;
 };
 
 // Purchase Operations
 export const addPurchase = async (purchase) => {
-    const db = await initDB();
-    return db.add('purchases', purchase);
+    const { data, error } = await supabase
+        .from('purchases')
+        .insert([{
+            date: purchase.date,
+            store_id: purchase.storeId,
+            total: purchase.total
+        }])
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data.id;
 };
 
 export const getAllPurchases = async () => {
-    const db = await initDB();
-    const purchases = await db.getAll('purchases');
-    return purchases.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const { data, error } = await supabase
+        .from('purchases')
+        .select('*, stores(name)')
+        .order('date', { ascending: false });
+
+    if (error) throw error;
+
+    // Map back to format expected by UI if needed
+    return data.map(p => ({
+        ...p,
+        storeId: p.store_id
+    }));
 };
 
 export const getPurchaseById = async (id) => {
-    const db = await initDB();
-    return db.get('purchases', id);
+    const { data, error } = await supabase
+        .from('purchases')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) throw error;
+    return { ...data, storeId: data.store_id };
+};
+
+export const deletePurchase = async (id) => {
+    const { error } = await supabase
+        .from('purchases')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
 };
 
 // Purchase Item Operations
 export const addPurchaseItem = async (item) => {
-    const db = await initDB();
-    return db.add('purchaseItems', item);
+    const { error } = await supabase
+        .from('purchase_items')
+        .insert([{
+            purchase_id: item.purchaseId,
+            product_name: item.productName,
+            brand: item.brand,
+            category: item.category,
+            weight: item.weight,
+            unit: item.unit,
+            price: item.price,
+            date: item.date
+        }]);
+
+    if (error) throw error;
 };
 
 export const getPurchaseItems = async (purchaseId) => {
-    const db = await initDB();
-    const allItems = await db.getAllFromIndex('purchaseItems', 'purchaseId', purchaseId);
-    return allItems;
+    const { data, error } = await supabase
+        .from('purchase_items')
+        .select('*')
+        .eq('purchase_id', purchaseId);
+
+    if (error) throw error;
+
+    return data.map(i => ({
+        ...i,
+        purchaseId: i.purchase_id,
+        productName: i.product_name
+    }));
 };
 
 export const getAllPurchaseItems = async () => {
-    const db = await initDB();
-    return db.getAll('purchaseItems');
+    const { data, error } = await supabase
+        .from('purchase_items')
+        .select('*');
+
+    if (error) throw error;
+    return data.map(i => ({
+        ...i,
+        purchaseId: i.purchase_id,
+        productName: i.product_name
+    }));
+};
+
+export const updatePurchaseItem = async (id, updates) => {
+    const { data, error } = await supabase
+        .from('purchase_items')
+        .update({
+            product_name: updates.productName,
+            brand: updates.brand,
+            category: updates.category,
+            weight: updates.weight,
+            unit: updates.unit,
+            price: updates.price
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return { ...data, productName: data.product_name };
+};
+
+export const deletePurchaseItem = async (id, purchaseId) => {
+    // Excluir o item
+    const { error: deleteError } = await supabase
+        .from('purchase_items')
+        .delete()
+        .eq('id', id);
+    if (deleteError) throw deleteError;
+
+    // Recalcular total da compra
+    const items = await getPurchaseItems(purchaseId);
+    const newTotal = items.reduce((sum, item) => sum + (item.price * (item.weight || 1)), 0);
+
+    const { error: updateError } = await supabase
+        .from('purchases')
+        .update({ total: newTotal })
+        .eq('id', purchaseId);
+
+    if (updateError) throw updateError;
 };
 
 // Shopping List Operations
 export const createShoppingList = async (list) => {
-    const db = await initDB();
-    return db.add('shoppingLists', {
-        ...list,
-        createdAt: new Date().toISOString(),
-        status: 'active'
-    });
+    const { data, error } = await supabase
+        .from('shopping_lists')
+        .insert([{ name: list.name, status: 'active' }])
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data.id;
 };
 
 export const getAllShoppingLists = async () => {
-    const db = await initDB();
-    const lists = await db.getAll('shoppingLists');
-    return lists.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Usando uma subquery ou select count para pegar itemCount se necessário
+    // Por simplicidade agora, vamos pegar as listas e depois os counts seriam calculados no front ou via RPC
+    const { data, error } = await supabase
+        .from('shopping_lists')
+        .select(`
+            *,
+            shopping_list_items(count)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(l => ({
+        ...l,
+        createdAt: l.created_at,
+        itemCount: l.shopping_list_items?.[0]?.count || 0
+    }));
 };
 
 export const getShoppingListById = async (id) => {
-    const db = await initDB();
-    return db.get('shoppingLists', id);
+    const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) throw error;
+    return data;
 };
 
 export const updateShoppingList = async (id, updates) => {
-    const db = await initDB();
-    const list = await db.get('shoppingLists', id);
-    const updated = { ...list, ...updates };
-    await db.put('shoppingLists', updated);
-    return updated;
+    const { data, error } = await supabase
+        .from('shopping_lists')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
 };
 
 export const deleteShoppingList = async (id) => {
-    const db = await initDB();
-    // Delete list items first
-    const items = await getShoppingListItems(id);
-    for (const item of items) {
-        await db.delete('shoppingListItems', item.id);
-    }
-    // Delete list
-    await db.delete('shoppingLists', id);
+    const { error } = await supabase
+        .from('shopping_lists')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
 };
 
 // Shopping List Item Operations
 export const addShoppingListItem = async (item) => {
-    const db = await initDB();
-    return db.add('shoppingListItems', {
-        ...item,
-        checked: false,
-        price: null
-    });
+    const { data, error } = await supabase
+        .from('shopping_list_items')
+        .insert([{
+            list_id: item.listId,
+            product_name: item.productName,
+            unit: item.unit || 'un',
+            checked: false
+        }])
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
 };
 
 export const getShoppingListItems = async (listId) => {
-    const db = await initDB();
-    return db.getAllFromIndex('shoppingListItems', 'listId', listId);
+    const { data, error } = await supabase
+        .from('shopping_list_items')
+        .select('*')
+        .eq('list_id', listId);
+
+    if (error) throw error;
+    return data.map(i => ({
+        ...i,
+        listId: i.list_id,
+        productName: i.product_name
+    }));
 };
 
 export const updateShoppingListItem = async (id, updates) => {
-    const db = await initDB();
-    const item = await db.get('shoppingListItems', id);
-    const updated = { ...item, ...updates };
-    await db.put('shoppingListItems', updated);
-    return updated;
+    const cleanUpdates = {};
+    if (updates.productName) cleanUpdates.product_name = updates.productName;
+    if (updates.checked !== undefined) cleanUpdates.checked = updates.checked;
+    if (updates.price !== undefined) cleanUpdates.price = updates.price;
+
+    const { data, error } = await supabase
+        .from('shopping_list_items')
+        .update(cleanUpdates)
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
 };
 
 export const deleteShoppingListItem = async (id) => {
-    const db = await initDB();
-    await db.delete('shoppingListItems', id);
+    const { error } = await supabase
+        .from('shopping_list_items')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw error;
 };
 
 // Analytics Operations
 export const getProductHistory = async (productName) => {
-    const db = await initDB();
-    const allItems = await db.getAll('purchaseItems');
-    return allItems.filter(item =>
-        item.productName.toLowerCase().includes(productName.toLowerCase())
-    ).sort((a, b) => new Date(b.date) - new Date(a.date));
+    const { data, error } = await supabase
+        .from('purchase_items')
+        .select('*')
+        .ilike('product_name', `%${productName}%`)
+        .order('date', { ascending: false });
+
+    if (error) throw error;
+    return data.map(i => ({ ...i, productName: i.product_name }));
 };
 
 export const getLowestPrice = async (productName, brand = null) => {
-    const db = await initDB();
-    const allItems = await db.getAll('purchaseItems');
-    const filtered = allItems.filter(item => {
-        const nameMatch = item.productName.toLowerCase() === productName.toLowerCase();
-        const brandMatch = !brand || item.brand.toLowerCase() === brand.toLowerCase();
-        return nameMatch && brandMatch;
-    });
+    let query = supabase
+        .from('purchase_items')
+        .select('*')
+        .ilike('product_name', productName)
+        .order('price', { ascending: true })
+        .limit(1);
 
-    if (filtered.length === 0) return null;
+    if (brand) {
+        query = query.ilike('brand', brand);
+    }
 
-    return filtered.reduce((min, item) =>
-        item.price < min.price ? item : min
-    );
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return data.length > 0 ? { ...data[0], productName: data[0].product_name } : null;
 };
 
 export const getCategoryTotals = async () => {
-    const db = await initDB();
-    const allItems = await db.getAll('purchaseItems');
+    const { data, error } = await supabase
+        .from('purchase_items')
+        .select('category, price');
+
+    if (error) throw error;
 
     const totals = {};
-    allItems.forEach(item => {
-        if (!totals[item.category]) {
-            totals[item.category] = 0;
-        }
-        totals[item.category] += item.price;
+    data.forEach(item => {
+        if (!totals[item.category]) totals[item.category] = 0;
+        totals[item.category] += parseFloat(item.price);
     });
 
     return Object.entries(totals).map(([category, total]) => ({
@@ -207,18 +341,18 @@ export const getCategoryTotals = async () => {
 };
 
 export const getMonthlyTotals = async () => {
-    const db = await initDB();
-    const purchases = await db.getAll('purchases');
+    const { data, error } = await supabase
+        .from('purchases')
+        .select('date, total');
+
+    if (error) throw error;
 
     const monthlyData = {};
-    purchases.forEach(purchase => {
+    data.forEach(purchase => {
         const date = new Date(purchase.date);
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-        if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = 0;
-        }
-        monthlyData[monthKey] += purchase.total;
+        if (!monthlyData[monthKey]) monthlyData[monthKey] = 0;
+        monthlyData[monthKey] += parseFloat(purchase.total);
     });
 
     return Object.entries(monthlyData)
@@ -230,30 +364,25 @@ export const getMonthlyTotals = async () => {
 };
 
 export const getStoreRanking = async () => {
-    const db = await initDB();
-    const purchases = await db.getAll('purchases');
-    const stores = await db.getAll('stores');
+    const { data: purchases, error: pError } = await supabase.from('purchases').select('store_id, total');
+    const { data: stores, error: sError } = await supabase.from('stores').select('*');
 
-    const storeData = {};
+    if (pError || sError) throw pError || sError;
 
-    purchases.forEach(purchase => {
-        if (!storeData[purchase.storeId]) {
-            storeData[purchase.storeId] = {
-                total: 0,
-                count: 0
-            };
-        }
-        storeData[purchase.storeId].total += purchase.total;
-        storeData[purchase.storeId].count += 1;
+    const storeStats = {};
+    purchases.forEach(p => {
+        if (!storeStats[p.store_id]) storeStats[p.store_id] = { total: 0, count: 0 };
+        storeStats[p.store_id].total += parseFloat(p.total);
+        storeStats[p.store_id].count += 1;
     });
 
-    return Object.entries(storeData).map(([storeId, data]) => {
+    return Object.entries(storeStats).map(([storeId, stats]) => {
         const store = stores.find(s => s.id === parseInt(storeId));
         return {
             storeName: store?.name || 'Desconhecido',
-            averageSpent: parseFloat((data.total / data.count).toFixed(2)),
-            totalSpent: parseFloat(data.total.toFixed(2)),
-            purchaseCount: data.count
+            averageSpent: parseFloat((stats.total / stats.count).toFixed(2)),
+            totalSpent: parseFloat(stats.total.toFixed(2)),
+            purchaseCount: stats.count
         };
     }).sort((a, b) => a.averageSpent - b.averageSpent);
 };

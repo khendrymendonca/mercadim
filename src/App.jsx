@@ -85,7 +85,7 @@ function Navigation() {
         }}>
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
+                gridTemplateColumns: 'repeat(5, 1fr)',
                 maxWidth: '1200px',
                 margin: '0 auto'
             }}>

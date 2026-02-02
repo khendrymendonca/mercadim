@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Store, AlertCircle, TrendingDown, Calculator } from 'lucide-react';
-import { addStore, getAllStores, addPurchase, addPurchaseItem, getLowestPrice } from '../db';
+import { Plus, Store, AlertCircle, TrendingDown, Calculator, ClipboardList, Check, Trash2, Edit2 } from 'lucide-react';
+import { addStore, getAllStores, addPurchase, addPurchaseItem, getLowestPrice, getAllShoppingLists, getShoppingListItems, deleteShoppingList } from '../db';
 import { format } from 'date-fns';
 
 const CATEGORIES = [
@@ -27,13 +27,24 @@ function NewPurchase() {
         category: 'Mercearia',
         price: ''
     });
+    const [availableLists, setAvailableLists] = useState([]);
+    const [selectedListId, setSelectedListId] = useState('');
     const [showNewStoreForm, setShowNewStoreForm] = useState(false);
     const [newStore, setNewStore] = useState({ name: '', address: '' });
     const [lowestPriceInfo, setLowestPriceInfo] = useState(null);
+    const [showEditModal, setShowEditModal] = useState(null);
+    const [editPrice, setEditPrice] = useState('');
+    const [editWeight, setEditWeight] = useState('');
 
     useEffect(() => {
         loadStores();
+        loadLists();
     }, []);
+
+    const loadLists = async () => {
+        const listData = await getAllShoppingLists();
+        setAvailableLists(listData.filter(l => l.status === 'active'));
+    };
 
     useEffect(() => {
         if (currentItem.productName.length >= 3) {
@@ -51,6 +62,28 @@ function NewPurchase() {
     const checkLowestPrice = async () => {
         const lowest = await getLowestPrice(currentItem.productName, currentItem.brand);
         setLowestPriceInfo(lowest);
+    };
+
+    const handleImportList = async (listId) => {
+        if (!listId) return;
+        const listItems = await getShoppingListItems(parseInt(listId));
+
+        const importedItems = listItems.map(item => ({
+            productName: item.productName,
+            brand: '',
+            weight: '',
+            unit: item.unit || 'un',
+            category: 'Mercearia',
+            price: null, // Pendente
+            id: Date.now() + Math.random(),
+            isPlanned: true,
+            fromListId: parseInt(listId)
+        }));
+
+        setItems([...items, ...importedItems]);
+        setSelectedListId('');
+        // Marcar lista como em uso ou apenas importar? 
+        // Vamos apenas importar para manter a flexibilidade.
     };
 
     const handleAddStore = async () => {
@@ -103,35 +136,92 @@ function NewPurchase() {
     };
 
     const handleSavePurchase = async () => {
-        if (!selectedStore || items.length === 0) return;
+        console.log('Iniciando salvamento da compra...', { selectedStore, itemCount: items.length });
 
-        const total = parseFloat(calculateTotal());
-        const purchaseId = await addPurchase({
-            date: purchaseDate,
-            storeId: parseInt(selectedStore),
-            total
-        });
+        try {
+            if (!selectedStore) {
+                alert('Por favor, selecione um mercado.');
+                return;
+            }
 
-        for (const item of items) {
-            await addPurchaseItem({
-                ...item,
-                purchaseId,
-                date: purchaseDate
-            });
+            const validItems = items.filter(i => i.price !== null);
+            if (validItems.length === 0) {
+                alert('Adicione pelo menos um item com preço para salvar.');
+                return;
+            }
+
+            console.log('Itens válidos encontrados:', validItems);
+
+            const total = validItems.reduce((sum, item) => {
+                const itemTotal = (parseFloat(item.price) || 0) * (parseFloat(item.weight) || 1);
+                return sum + itemTotal;
+            }, 0);
+
+            console.log('Calculando total:', total);
+
+            const purchaseData = {
+                date: purchaseDate,
+                storeId: parseInt(selectedStore),
+                total: parseFloat(total.toFixed(2))
+            };
+
+            const purchaseId = await addPurchase(purchaseData);
+            console.log('Compra criada com ID:', purchaseId);
+
+            for (const item of validItems) {
+                // Criamos uma cópia limpa SEM o ID temporário do frontend
+                const cleanItem = {
+                    productName: item.productName || 'Sem nome',
+                    brand: item.brand || '',
+                    weight: parseFloat(item.weight) || 1,
+                    unit: item.unit || 'un',
+                    category: item.category || 'Outros',
+                    price: parseFloat(item.price) || 0,
+                    purchaseId: purchaseId,
+                    date: purchaseDate
+                };
+
+                await addPurchaseItem(cleanItem);
+                console.log('Item salvo:', cleanItem.productName);
+            }
+
+            // Limpa listas se houver itens planejados
+            if (items.some(i => i.isPlanned)) {
+                console.log('Limpando listas importadas...');
+                const listIdsToDelete = [...new Set(items.filter(i => i.isPlanned).map(i => i.fromListId))];
+                for (const id of listIdsToDelete) {
+                    if (id) await deleteShoppingList(id);
+                }
+                loadLists();
+            }
+
+            setItems([]);
+            alert('✅ Compra salva com sucesso!');
+            console.log('Fluxo finalizado com sucesso.');
+        } catch (error) {
+            console.error('ERRO FATAL ao salvar compra:', error);
+            alert('Erro ao salvar: ' + (error.message || 'Erro desconhecido no banco de dados'));
         }
+    };
 
-        // Reset form
-        setItems([]);
-        setCurrentItem({
-            productName: '',
-            brand: '',
-            weight: '',
-            unit: 'kg',
-            category: 'Mercearia',
-            price: ''
-        });
+    const handleQuickEdit = async (item) => {
+        setShowEditModal(item);
+        setEditPrice(item.price || '');
+        setEditWeight(item.weight || '1');
 
-        alert('Compra salva com sucesso!');
+        // Buscar menor preço histórico para inteligência no mercado
+        const lowest = await getLowestPrice(item.productName);
+        setLowestPriceInfo(lowest);
+    };
+
+    const confirmQuickEdit = () => {
+        setItems(items.map(i => i.id === showEditModal.id ? {
+            ...i,
+            price: parseFloat(editPrice),
+            weight: parseFloat(editWeight)
+        } : i));
+        setShowEditModal(null);
+        setLowestPriceInfo(null);
     };
 
     const pricePerUnit = calculatePricePerUnit();
@@ -163,11 +253,38 @@ function NewPurchase() {
                 <button
                     className="btn btn-secondary"
                     onClick={() => setShowNewStoreForm(!showNewStoreForm)}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', marginBottom: 'var(--spacing-md)' }}
                 >
                     <Plus size={20} />
                     Cadastrar Novo Mercado
                 </button>
+
+                <div style={{ padding: 'var(--spacing-md)', background: 'var(--emerald-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--emerald-200)' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: 'var(--spacing-sm)', color: 'var(--emerald-800)' }}>
+                        <ClipboardList size={18} style={{ display: 'inline', marginRight: 'var(--spacing-xs)' }} />
+                        Iniciar a partir de uma Lista
+                    </label>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                        <select
+                            className="select"
+                            style={{ flex: 1 }}
+                            value={selectedListId}
+                            onChange={(e) => setSelectedListId(e.target.value)}
+                        >
+                            <option value="">Selecione uma lista planejada...</option>
+                            {availableLists.map(l => (
+                                <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                        </select>
+                        <button
+                            className="btn btn-primary"
+                            disabled={!selectedListId}
+                            onClick={() => handleImportList(selectedListId)}
+                        >
+                            Importar
+                        </button>
+                    </div>
+                </div>
 
                 {showNewStoreForm && (
                     <div style={{ marginTop: 'var(--spacing-md)', padding: 'var(--spacing-md)', background: 'var(--slate-50)', borderRadius: 'var(--radius-md)' }}>
@@ -334,34 +451,41 @@ function NewPurchase() {
                     {items.map(item => (
                         <div
                             key={item.id}
+                            onClick={() => item.price === null ? handleQuickEdit(item) : null}
                             style={{
                                 padding: 'var(--spacing-md)',
-                                background: 'var(--slate-50)',
+                                background: item.price === null ? 'var(--slate-100)' : 'var(--slate-50)',
+                                border: item.price === null ? '2px dashed var(--slate-300)' : 'none',
                                 borderRadius: 'var(--radius-md)',
                                 marginBottom: 'var(--spacing-sm)',
                                 display: 'flex',
                                 justifyContent: 'space-between',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                cursor: item.price === null ? 'pointer' : 'default'
                             }}
                         >
                             <div style={{ flex: 1 }}>
-                                <p style={{ fontWeight: 600 }}>{item.productName}</p>
+                                <p style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {item.productName}
+                                    {item.price === null && <span style={{ fontSize: '10px', background: 'var(--slate-400)', color: 'white', padding: '2px 6px', borderRadius: '4px' }}>PENDENTE</span>}
+                                </p>
                                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-600)' }}>
                                     {item.brand} • {item.weight}{item.unit} • {item.category}
                                 </p>
-                                {item.pricePerUnit && (
-                                    <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)' }}>
-                                        R$ {item.pricePerUnit}/{item.unit}
-                                    </p>
-                                )}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-                                <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--emerald-600)' }}>
-                                    R$ {item.price.toFixed(2)}
-                                </span>
+                                {item.price !== null ? (
+                                    <span style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--emerald-600)' }}>
+                                        R$ {(item.price * (item.weight || 1)).toFixed(2)}
+                                    </span>
+                                ) : (
+                                    <div style={{ color: 'var(--slate-400)', fontSize: 'var(--font-size-sm)' }}>
+                                        Clique para lançar <Edit2 size={14} style={{ display: 'inline' }} />
+                                    </div>
+                                )}
                                 <button
                                     className="btn btn-danger"
-                                    onClick={() => handleRemoveItem(item.id)}
+                                    onClick={(e) => { e.stopPropagation(); handleRemoveItem(item.id); }}
                                     style={{ padding: 'var(--spacing-sm)' }}
                                 >
                                     ✕
@@ -378,17 +502,80 @@ function NewPurchase() {
                         color: 'white'
                     }}>
                         <p style={{ fontSize: 'var(--font-size-lg)', marginBottom: 'var(--spacing-xs)' }}>Total da Compra</p>
-                        <p style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 700 }}>R$ {calculateTotal()}</p>
+                        <p style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 700 }}>R$ {items.reduce((sum, i) => sum + ((i.price || 0) * (i.weight || 1)), 0).toFixed(2)}</p>
                     </div>
 
                     <button
                         className="btn btn-primary"
                         onClick={handleSavePurchase}
-                        disabled={!selectedStore}
+                        disabled={!selectedStore || items.filter(i => i.price !== null).length === 0}
                         style={{ width: '100%', marginTop: 'var(--spacing-lg)' }}
                     >
                         Salvar Compra
                     </button>
+                </div>
+            )}
+
+            {/* Quick Edit Modal for Planned Items */}
+            {showEditModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                    padding: 'var(--spacing-md)'
+                }}>
+                    <div className="card fade-in" style={{ width: '100%', maxWidth: '400px' }}>
+                        <h3 style={{ marginBottom: 'var(--spacing-sm)' }}>Lançar: {showEditModal.productName}</h3>
+
+                        {lowestPriceInfo && (
+                            <div style={{
+                                background: 'var(--emerald-50)',
+                                border: '1px solid var(--emerald-200)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: 'var(--spacing-sm)',
+                                marginBottom: 'var(--spacing-md)',
+                                fontSize: 'var(--font-size-sm)',
+                                color: 'var(--emerald-700)',
+                                textAlign: 'center'
+                            }}>
+                                📉 Menor histórico: <strong>R$ {lowestPriceInfo.price.toFixed(2)}</strong>
+                                {lowestPriceInfo.brand && ` (${lowestPriceInfo.brand})`}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px' }}>Preço Unitário</label>
+                                <input
+                                    className="input"
+                                    type="number"
+                                    autoFocus
+                                    value={editPrice}
+                                    onChange={(e) => setEditPrice(e.target.value)}
+                                    placeholder="R$ 0.00"
+                                />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '12px', marginBottom: '4px' }}>Quantidade/Peso</label>
+                                <input
+                                    className="input"
+                                    type="number"
+                                    value={editWeight}
+                                    onChange={(e) => setEditWeight(e.target.value)}
+                                    placeholder="1"
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowEditModal(null)}>Cancelar</button>
+                            <button className="btn btn-primary" style={{ flex: 1 }} onClick={confirmQuickEdit}>Confirmar</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
