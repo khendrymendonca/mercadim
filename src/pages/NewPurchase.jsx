@@ -593,8 +593,8 @@ function NewPurchase() {
                         color: 'white'
                     }}>
                         <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--slate-500)', fontWeight: 600 }}>Total da Compra</p>
-                            <p style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 900, color: 'var(--primary-600)', letterSpacing: '-1px' }}>
+                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>Total da Compra</p>
+                            <p style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 900, color: 'white', letterSpacing: '-1px' }}>
                                 {formatCurrency(items.reduce((sum, i) => sum + ((i.price || 0) * (i.weight || 1)), 0))}
                             </p>
                         </div>

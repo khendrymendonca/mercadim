@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Store as StoreIcon, Calendar, Wallet, PieChart as PieIcon, BarChart3, ChevronRight } from 'lucide-react';
 import { getMonthlyTotals, getCategoryTotals, getStoreRanking, getAllPurchases, getMealAllowance, setMealAllowance, getAllMealAllowances } from '../db';
+import { supabase } from '../lib/supabase';
 import { format, startOfMonth, endOfMonth, subMonths, isWithinInterval, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { formatCurrency } from '../utils/format';
@@ -151,7 +152,7 @@ function Dashboard() {
 
             // Quick Fix: Let's fetch All Purchase Items and filter by date (items have 'date' column in DB)
             // or filter by checking if item.purchase_id is in filtered purchases list.
-            const { data: allItems, error } = await import('../lib/supabase').then(m => m.supabase.from('purchase_items').select('*'));
+            const { data: allItems, error } = await supabase.from('purchase_items').select('*');
 
             if (!error && allItems) {
                 const filteredItems = allItems.filter(item => filtered.some(p => p.id === item.purchase_id));

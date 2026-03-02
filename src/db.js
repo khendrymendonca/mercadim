@@ -194,7 +194,8 @@ export const addPurchase = async (storeId, date, total, items, paymentMethod = '
         weight: parseFloat(item.weight) || 1,
         unit: item.unit,
         price: parseFloat(item.price),
-        date: date
+        date: date,
+        is_promotion: item.isPromotion || false
     }));
 
     const { error: itemsError } = await supabase

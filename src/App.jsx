@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, History, TrendingUp, Search, ClipboardList, Tag, Heart, Sparkles } from 'lucide-react';
+import { ShoppingCart, History, TrendingUp, Search, ClipboardList, Tag, Heart, Sparkles, Wallet } from 'lucide-react';
 import NewPurchase from './pages/NewPurchase';
 import ShoppingList from './pages/ShoppingList';
 import PurchaseHistory from './pages/PurchaseHistory';
@@ -77,7 +77,7 @@ function Header() {
     );
 }
 
-import { Wallet } from 'lucide-react';
+
 
 function Navigation() {
     const location = useLocation();
