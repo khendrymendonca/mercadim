@@ -1,127 +1,206 @@
 // Vercel Serverless Function - Consulta NFC-e SEFAZ
-// Recebe a chave de acesso (44 dígitos) e retorna os dados estruturados da nota
+// Região: gru1 (São Paulo) - configurado em vercel.json
 
-const STATE_URLS = {
-    '31': (ch) => `https://nfce.fazenda.mg.gov.br/portalnfce/sistema/consultaExterna.xhtml?chNFe=${ch}&tipoConsulta=completa`,
-    '35': (ch) => `https://www.nfce.fazenda.sp.gov.br/NFCEConsultaPublica/Paginas/ConsultaPublicaNFCE.aspx?chNFe=${ch}`,
-    '33': (ch) => `https://www.sefaz.rj.gov.br/servicos/nfce/consultaNFCe.faces?chNFe=${ch}`,
-    '41': (ch) => `https://www.fazenda.pr.gov.br/nfce/consulta?chNFe=${ch}`,
-    '43': (ch) => `https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?chaveNFe=${ch}`,
-    '42': (ch) => `https://sat.sef.sc.gov.br/tax.NET/sat.consulta.nfce.aspx?chNFe=${ch}`,
-    '29': (ch) => `https://nfe.sefaz.ba.gov.br/servicos/nfce/default.htm?chNFe=${ch}`,
-    '23': (ch) => `https://nfce.sefaz.ce.gov.br/nfce/consulta?chNFe=${ch}`,
-    '52': (ch) => `https://www.sefaz.go.gov.br/nfeweb/sites/nfce/danfce.aspx?chNFe=${ch}`,
-    '53': (ch) => `https://dec.fazenda.df.gov.br/NFCE/consulta?chNFe=${ch}`,
-    '15': (ch) => `https://www.sefa.pa.gov.br/nfce/consulta?chNFe=${ch}`,
-    '21': (ch) => `https://www.sefaz.ma.gov.br/nfce/consulta?chNFe=${ch}`,
-    '25': (ch) => `https://www.sefaz.pb.gov.br/nfce/consulta?chNFe=${ch}`,
-    '26': (ch) => `https://nfce.sefaz.pe.gov.br/nfce/consulta?chNFe=${ch}`,
-    '27': (ch) => `https://nfce.sefaz.al.gov.br/consultarNFCe.html?chNFe=${ch}`,
-    '28': (ch) => `https://nfce.sefaz.se.gov.br/nfce/consulta?chNFe=${ch}`,
-    '32': (ch) => `https://app.sefaz.es.gov.br/ConsultaNFCe/consulta.aspx?chNFe=${ch}`,
-    '50': (ch) => `https://www.dfe.ms.gov.br/nfce/danfce.aspx?chNFe=${ch}`,
-    '51': (ch) => `https://www.sefaz.mt.gov.br/nfce/consultaNFCe.jsf?chNFe=${ch}`,
+const HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
 };
 
-// Parsers para extrair itens do HTML de cada estado
-function parseHTML(html) {
-    const result = {
-        storeName: '',
-        cnpj: '',
-        date: '',
-        total: 0,
-        items: []
-    };
+// URLs de consulta por estado (cUF IBGE)
+const STATE_CONFIG = {
+    '31': {
+        name: 'MG', urls: [
+            (ch) => `https://nfce.fazenda.mg.gov.br/portalnfce/sistema/consultaExterna.xhtml?chNFe=${ch}&tipoConsulta=completa`,
+        ]
+    },
+    '35': {
+        name: 'SP', urls: [
+            (ch) => `https://www.nfce.fazenda.sp.gov.br/NFCEConsultaPublica/Paginas/ConsultaPublicaNFCE.aspx?chNFe=${ch}`,
+        ]
+    },
+    '33': {
+        name: 'RJ', urls: [
+            (ch) => `https://www.sefaz.rj.gov.br/servicos/nfce/consultaNFCe.faces?chNFe=${ch}`,
+        ]
+    },
+    '41': {
+        name: 'PR', urls: [
+            (ch) => `https://www.fazenda.pr.gov.br/nfce/consulta?chNFe=${ch}`,
+        ]
+    },
+    '43': {
+        name: 'RS', urls: [
+            (ch) => `https://www.sefaz.rs.gov.br/NFCE/NFCE-COM.aspx?chaveNFe=${ch}`,
+        ]
+    },
+    '42': {
+        name: 'SC', urls: [
+            (ch) => `https://sat.sef.sc.gov.br/tax.NET/sat.consulta.nfce.aspx?chNFe=${ch}`,
+        ]
+    },
+    '29': {
+        name: 'BA', urls: [
+            (ch) => `https://nfe.sefaz.ba.gov.br/servicos/nfce/default.htm?chNFe=${ch}`,
+        ]
+    },
+    '23': {
+        name: 'CE', urls: [
+            (ch) => `https://nfce.sefaz.ce.gov.br/nfce/consulta?chNFe=${ch}`,
+        ]
+    },
+    '52': {
+        name: 'GO', urls: [
+            (ch) => `https://www.sefaz.go.gov.br/nfeweb/sites/nfce/danfce.aspx?chNFe=${ch}`,
+        ]
+    },
+    '53': {
+        name: 'DF', urls: [
+            (ch) => `https://dec.fazenda.df.gov.br/NFCE/consulta?chNFe=${ch}`,
+        ]
+    },
+    '32': {
+        name: 'ES', urls: [
+            (ch) => `https://app.sefaz.es.gov.br/ConsultaNFCe/consulta.aspx?chNFe=${ch}`,
+        ]
+    },
+    '50': {
+        name: 'MS', urls: [
+            (ch) => `https://www.dfe.ms.gov.br/nfce/danfce.aspx?chNFe=${ch}`,
+        ]
+    },
+    '51': {
+        name: 'MT', urls: [
+            (ch) => `https://www.sefaz.mt.gov.br/nfce/consultaNFCe.jsf?chNFe=${ch}`,
+        ]
+    },
+};
 
-    // === ESTRATÉGIA 1: Formato padrão MG / SP / RJ (tabela com classes padrão) ===
-    const storeMatch = html.match(/class=["']?txtTit["']?[^>]*>([^<]+)<\/[^>]+>\s*<[^>]+>\s*<[^>]+>([^<]+)</i) ||
-        html.match(/id=["']?u20["']?[^>]*>([^<]+)<\/span>/i) ||
-        html.match(/<span[^>]*class=["']?NFCChamEmi["']?[^>]*>\s*([^<]+)/i) ||
-        html.match(/<h4[^>]*>([^<]+)<\/h4>/) ||
-        html.match(/NomeEmitente['"]\s*value=['"]([^'"]+)['"]/i);
-
-    if (storeMatch) result.storeName = storeMatch[1].trim();
-
-    // CNPJ
-    const cnpjMatch = html.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/) ||
-        html.match(/CNPJ[^>]*>([^<]+)<\//) ||
-        html.match(/(\d{14})/);
-    if (cnpjMatch) result.cnpj = cnpjMatch[0].replace(/\D/g, '');
-
-    // Data
-    const dateMatch = html.match(/(\d{2}\/\d{2}\/\d{4})/) ||
-        html.match(/data[^>]*>([^<]*\d{2}\/\d{2}\/\d{4}[^<]*)</i);
-    if (dateMatch) {
-        const parts = dateMatch[1].match(/(\d{2})\/(\d{2})\/(\d{4})/);
-        if (parts) result.date = `${parts[3]}-${parts[2]}-${parts[1]}`;
+// Fetch com timeout compatível com Node 16+
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+        clearTimeout(timer);
     }
+}
 
-    // Total
-    const totalMatch = html.match(/Valor\s+Total\s+R\$\s*([\d.,]+)/i) ||
-        html.match(/total[^>]*>\s*R?\$?\s*([\d]+[.,]\d{2})/i) ||
-        html.match(/totalNota['"]\s*value=['"]([^'"]+)['"]/i);
-    if (totalMatch) {
-        result.total = parseFloat(totalMatch[1].replace('.', '').replace(',', '.')) || 0;
-    }
-
-    // === ESTRATÉGIA 2: Itens por linha de tabela ===
-    // Tenta capturar blocos de item com nome + qtd + unitário + total
-    const itemPatterns = [
-        // Padrão MG (tabelas com classes)
-        /<span[^>]*prodDescricao[^>]*>([^<]+)<\/span>[\s\S]*?<span[^>]*prodQtde[^>]*>([\d.,]+)<\/span>[\s\S]*?<span[^>]*prodUn[^>]*>([^<]+)<\/span>[\s\S]*?<span[^>]*prodVUnit[^>]*>([\d.,]+)<\/span>[\s\S]*?<span[^>]*prodVTotal[^>]*>([\d.,]+)<\/span>/gi,
-        // Variante com class alternativas
-        /<td[^>]*class=["'][^"']*descricao[^"']*["'][^>]*>([^<]+)<\/td>[\s\S]*?<td[^>]*>([\d.,]+)\s*<\/td>[\s\S]*?<td[^>]*>([A-Z]+)\s*<\/td>[\s\S]*?<td[^>]*>([\d.,]+)\s*<\/td>[\s\S]*?<td[^>]*>([\d.,]+)\s*<\/td>/gi,
-        // Padrão SP
-        /<span[^>]*id=["'][^"']*NomeAutorizado[^"']*["'][^>]*>([\s\S]*?)<\/span>/gi,
+// Estratégia de fetch: GET, depois GET com referrer, depois POST
+async function fetchSefaz(url) {
+    const configs = [
+        { method: 'GET', extra: {} },
+        { method: 'GET', extra: { headers: { ...HEADERS, 'Referer': new URL(url).origin + '/' } } },
+        {
+            method: 'POST', extra: {
+                headers: { ...HEADERS, 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `javax.faces.partial.ajax=false&javax.faces.partial.execute=%40all`
+            }
+        },
     ];
 
-    for (const pattern of itemPatterns) {
-        let match;
-        pattern.lastIndex = 0;
-        while ((match = pattern.exec(html)) !== null) {
-            const rawName = match[1].trim();
-            const qty = parseFloat((match[2] || '1').replace(',', '.')) || 1;
-            const unit = (match[3] || 'un').trim();
-            const unitPrice = parseFloat((match[4] || '0').replace('.', '').replace(',', '.')) || 0;
-            const totalItem = parseFloat((match[5] || '0').replace('.', '').replace(',', '.')) || (qty * unitPrice);
+    let lastError;
+    for (const { method, extra } of configs) {
+        try {
+            const res = await fetchWithTimeout(url, { method, headers: HEADERS, redirect: 'follow', ...extra }, 12000);
+            if (res.ok) return res;
+            lastError = new Error(`HTTP ${res.status}`);
+        } catch (e) {
+            lastError = e;
+        }
+    }
+    throw lastError;
+}
 
-            if (rawName && rawName.length > 1) {
-                result.items.push({
-                    name: rawName,
-                    qty,
-                    unit: unit.toLowerCase(),
-                    unitPrice: unitPrice || (totalItem / qty),
-                    total: totalItem
-                });
-            }
+// Parser HTML: extrai dados da NFC-e independente de estado
+function parseNFCeHTML(html) {
+    const result = { storeName: '', cnpj: '', date: '', total: 0, items: [] };
+
+    // Remove scripts e estilos para limpar o HTML
+    const clean = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '');
+
+    // Nome da loja
+    const storePatterns = [
+        /class=["'][^"']*(?:txtTit|nomeEmitente|razaoSocial|NomeAutorizado|empresa)[^"']*["'][^>]*>([^<]+)/i,
+        /<h4[^>]*>([^<]{3,80})<\/h4>/i,
+        /<h3[^>]*>([^<]{3,80})<\/h3>/i,
+        /Razão Social[:\s]*<[^>]*>([^<]+)/i,
+    ];
+    for (const p of storePatterns) {
+        const m = clean.match(p);
+        if (m?.[1]?.trim().length > 2) { result.storeName = m[1].trim(); break; }
+    }
+
+    // CNPJ
+    const cnpjM = clean.match(/\d{2}[\. ]?\d{3}[\. ]?\d{3}[\/\. ]?\d{4}[-. ]?\d{2}/);
+    if (cnpjM) result.cnpj = cnpjM[0].replace(/\D/g, '');
+
+    // Data (DD/MM/YYYY)
+    const dateM = clean.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (dateM) result.date = `${dateM[3]}-${dateM[2]}-${dateM[1]}`;
+
+    // Total
+    const totalPatterns = [
+        /(?:Total\s+R\$|Valor\s+Total)[^\d]*([\d]{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))/i,
+        /totalNota[^>]* value=["']([\d.,]+)/i,
+        /class=["'][^"']*totalNF[^"']*["'][^>]*>[\s\S]*?R?\$?\s*([\d,\.]+)/i,
+    ];
+    for (const p of totalPatterns) {
+        const m = clean.match(p);
+        if (m) {
+            const raw = m[1].replace(/\./g, '').replace(',', '.');
+            result.total = parseFloat(raw) || 0;
+            if (result.total > 0) break;
+        }
+    }
+
+    // Itens - Estratégia 1: classes padrão NFC-e
+    const itemRegexes = [
+        /<span[^>]*prodDescricao[^>]*>([\s\S]*?)<\/span>[\s\S]*?<span[^>]*prodQtde[^>]*>([\d,.]+)<\/span>[\s\S]*?<span[^>]*prodUn[^>]*>([A-Za-z]+)<\/span>[\s\S]*?<span[^>]*prodVUnit[^>]*>([\d,.]+)<\/span>[\s\S]*?<span[^>]*prodVTotal[^>]*>([\d,.]+)<\/span>/gi,
+        /<td[^>]*class=["'][^"']*(?:descricao|produto|nome)[^"']*["'][^>]*>([\s\S]*?)<\/td>[\s\S]{0,300}?<td[^>]*>([\d,.]+)\s*<\/td>[\s\S]{0,100}?<td[^>]*>([A-Z]{1,5})\s*<\/td>[\s\S]{0,100}?<td[^>]*>([\d,.]+)\s*<\/td>[\s\S]{0,100}?<td[^>]*>([\d,.]+)\s*<\/td>/gi,
+    ];
+
+    for (const regex of itemRegexes) {
+        regex.lastIndex = 0;
+        let m;
+        while ((m = regex.exec(clean)) !== null) {
+            const name = m[1].replace(/<[^>]+>/g, '').trim();
+            if (!name || name.length < 2) continue;
+            const qty = parseFloat(m[2].replace(',', '.')) || 1;
+            const unit = (m[3] || 'UN').trim().toLowerCase();
+            const unitPrice = parseFloat(m[4].replace('.', '').replace(',', '.')) || 0;
+            const total = parseFloat(m[5].replace('.', '').replace(',', '.')) || qty * unitPrice;
+            result.items.push({ name, qty, unit, unitPrice, total });
         }
         if (result.items.length > 0) break;
     }
 
-    // === ESTRATÉGIA 3: Extração genérica de preços ===
+    // Itens - Estratégia 2: extrair de linhas de tabela genéricas
     if (result.items.length === 0) {
-        // Tenta extrair pares nome-preço de qualquer estrutura de tabela
-        const rows = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
-        for (const row of rows) {
+        const trBlocks = clean.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
+        for (const row of trBlocks) {
             const cells = (row.match(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi) || [])
-                .map(c => c.replace(/<[^>]+>/g, '').trim())
-                .filter(c => c.length > 0);
+                .map(c => c.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim())
+                .filter(Boolean);
 
-            if (cells.length >= 2) {
-                const priceCell = cells.find(c => /R\$\s*[\d.,]+|^\d+[.,]\d{2}$/.test(c));
-                const nameCell = cells[0];
-                if (priceCell && nameCell && nameCell.length > 2 && isNaN(nameCell.replace(',', '.'))) {
-                    const price = parseFloat(priceCell.replace(/[^0-9,]/g, '').replace(',', '.')) || 0;
-                    if (price > 0) {
-                        result.items.push({
-                            name: nameCell,
-                            qty: 1,
-                            unit: 'un',
-                            unitPrice: price,
-                            total: price
-                        });
-                    }
-                }
+            if (cells.length < 3) continue;
+            const name = cells[0];
+            if (!name || name.length < 2 || /total|data|cnpj|cpf|data|emiss/i.test(name)) continue;
+
+            const priceCell = cells.slice(1).find(c => /^[\d]+[.,]\d{2}$/.test(c.replace(/\s/g, '')));
+            if (!priceCell) continue;
+
+            const price = parseFloat(priceCell.replace('.', '').replace(',', '.'));
+            if (price > 0 && price < 10000) {
+                result.items.push({ name, qty: 1, unit: 'un', unitPrice: price, total: price });
             }
         }
     }
@@ -130,68 +209,51 @@ function parseHTML(html) {
 }
 
 export default async function handler(req, res) {
-    // CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
     if (req.method === 'OPTIONS') return res.status(200).end();
 
-    const { chave } = req.query;
+    const chave = (req.query.chave || '').replace(/\s/g, '');
 
-    if (!chave || chave.replace(/\s/g, '').length !== 44) {
-        return res.status(400).json({ error: 'Chave de acesso inválida. Deve ter 44 dígitos.' });
+    if (chave.length !== 44 || !/^\d{44}$/.test(chave)) {
+        return res.status(400).json({ error: 'Chave de acesso inválida. Deve conter exatamente 44 dígitos numéricos.' });
     }
 
-    const chaveClean = chave.replace(/\s/g, '');
-    const cUF = chaveClean.substring(0, 2);
-    const getUrl = STATE_URLS[cUF];
+    const cUF = chave.substring(0, 2);
+    const stateConfig = STATE_CONFIG[cUF];
 
-    if (!getUrl) {
-        return res.status(422).json({
-            error: `Estado com código IBGE ${cUF} não suportado ainda.`,
-            cUF
-        });
+    if (!stateConfig) {
+        return res.status(422).json({ error: `Estado com código IBGE "${cUF}" ainda não suportado. Por favor entre em contato para adicionar.` });
     }
 
-    const url = getUrl(chaveClean);
+    let lastError = null;
+    for (const buildUrl of stateConfig.urls) {
+        const url = buildUrl(chave);
+        try {
+            const response = await fetchSefaz(url);
+            const html = await response.text();
 
-    try {
-        const response = await fetch(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Language': 'pt-BR,pt;q=0.9',
-                'Cache-Control': 'no-cache',
-            },
-            signal: AbortSignal.timeout(15000)
-        });
+            if (html.length < 500) {
+                lastError = new Error('Portal retornou resposta vazia ou muito curta.');
+                continue;
+            }
 
-        if (!response.ok) {
-            return res.status(502).json({
-                error: `Portal SEFAZ retornou status ${response.status}. Tente novamente em instantes.`,
-                url
-            });
+            const data = parseNFCeHTML(html);
+            data.chave = chave;
+            data.estado = stateConfig.name;
+            data.parseSuccess = data.items.length > 0;
+
+            return res.status(200).json(data);
+        } catch (e) {
+            lastError = e;
         }
-
-        const html = await response.text();
-        const data = parseHTML(html);
-
-        // Adiciona metadados úteis
-        data.chave = chaveClean;
-        data.cUF = cUF;
-        data.urlConsultada = url;
-        data.parseSuccess = data.items.length > 0;
-
-        return res.status(200).json(data);
-
-    } catch (err) {
-        const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
-        return res.status(502).json({
-            error: isTimeout
-                ? 'Portal SEFAZ demorou muito para responder. Tente novamente.'
-                : `Erro ao consultar SEFAZ: ${err.message}`,
-            url
-        });
     }
+
+    const isTimeout = lastError?.name === 'AbortError';
+    return res.status(502).json({
+        error: isTimeout
+            ? 'O portal do SEFAZ demorou demais para responder. Tente novamente em instantes.'
+            : `Não foi possível conectar ao SEFAZ-${stateConfig.name}. ${lastError?.message || ''}`.trim()
+    });
 }

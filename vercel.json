@@ -4,5 +4,13 @@
             "source": "/(.*)",
             "destination": "/index.html"
         }
-    ]
+    ],
+    "functions": {
+        "api/consulta-nfe.js": {
+            "regions": [
+                "gru1"
+            ],
+            "maxDuration": 20
+        }
+    }
 }
