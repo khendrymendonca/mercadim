@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ShoppingCart, History, TrendingUp, Search, ClipboardList, Tag, Heart, Sparkles, Wallet, FileText } from 'lucide-react';
+import { ShoppingCart, History, TrendingUp, Search, ClipboardList, Tag, Heart, Sparkles, Wallet, ChefHat } from 'lucide-react';
 import NewPurchase from './pages/NewPurchase';
 import ShoppingList from './pages/ShoppingList';
 import PurchaseHistory from './pages/PurchaseHistory';
@@ -8,7 +8,7 @@ import Dashboard from './pages/Dashboard';
 import ProductSearch from './pages/ProductSearch';
 import Catalog from './pages/Catalog';
 import MealAllowance from './pages/MealAllowance';
-import ImportNF from './pages/ImportNF';
+import Cardapio from './pages/Cardapio';
 
 function App() {
     return (
@@ -24,7 +24,7 @@ function App() {
                         <Route path="/search" element={<ProductSearch />} />
                         <Route path="/catalog" element={<Catalog />} />
                         <Route path="/va" element={<MealAllowance />} />
-                        <Route path="/import" element={<ImportNF />} />
+                        <Route path="/cardapio" element={<Cardapio />} />
                     </Routes>
                 </main>
                 <Navigation />
@@ -87,9 +87,9 @@ function Navigation() {
     const navItems = [
         { path: '/', icon: ShoppingCart, label: 'Compra' },
         { path: '/list', icon: ClipboardList, label: 'Lista' },
+        { path: '/cardapio', icon: ChefHat, label: 'Cardápio' },
         { path: '/history', icon: History, label: 'Histórico' },
         { path: '/va', icon: Wallet, label: 'Vale' },
-        { path: '/import', icon: FileText, label: 'NF-e' },
         { path: '/dashboard', icon: TrendingUp, label: 'Métricas' },
         { path: '/search', icon: Search, label: 'Busca' },
         { path: '/catalog', icon: Tag, label: 'Adm' }

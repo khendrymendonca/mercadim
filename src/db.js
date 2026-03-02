@@ -552,3 +552,107 @@ export const getAllMealAllowances = async () => {
     if (error) throw error;
     return data;
 };
+
+// ============================================================
+// Cardápio Operations
+// ============================================================
+
+export const getAllCardapios = async () => {
+    const { data, error } = await supabase
+        .from('cardapios')
+        .select(`
+            *,
+            cardapio_pratos (
+                id, name, order_index,
+                cardapio_ingredientes (id, product_name, quantity, unit)
+            ),
+            cardapio_frequencia (id, days_of_week, interval_weeks, reference_date)
+        `)
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+};
+
+export const createCardapio = async (name, description = '') => {
+    const { data, error } = await supabase
+        .from('cardapios')
+        .insert([{ name, description }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const updateCardapio = async (id, updates) => {
+    const { data, error } = await supabase
+        .from('cardapios')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const deleteCardapio = async (id) => {
+    const { error } = await supabase.from('cardapios').delete().eq('id', id);
+    if (error) throw error;
+};
+
+// Pratos
+export const addPrato = async (cardapioId, name, orderIndex = 0) => {
+    const { data, error } = await supabase
+        .from('cardapio_pratos')
+        .insert([{ cardapio_id: cardapioId, name, order_index: orderIndex }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const updatePrato = async (id, name) => {
+    const { data, error } = await supabase
+        .from('cardapio_pratos')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const deletePrato = async (id) => {
+    const { error } = await supabase.from('cardapio_pratos').delete().eq('id', id);
+    if (error) throw error;
+};
+
+// Ingredientes
+export const addIngrediente = async (pratoId, productName, quantity = 1, unit = 'un') => {
+    const { data, error } = await supabase
+        .from('cardapio_ingredientes')
+        .insert([{ prato_id: pratoId, product_name: productName, quantity, unit }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const deleteIngrediente = async (id) => {
+    const { error } = await supabase.from('cardapio_ingredientes').delete().eq('id', id);
+    if (error) throw error;
+};
+
+// Frequência (upsert pq é 1:1 com cardápio)
+export const saveFrequencia = async (cardapioId, daysOfWeek, intervalWeeks, referenceDate) => {
+    const { data, error } = await supabase
+        .from('cardapio_frequencia')
+        .upsert(
+            { cardapio_id: cardapioId, days_of_week: daysOfWeek, interval_weeks: intervalWeeks, reference_date: referenceDate },
+            { onConflict: 'cardapio_id' }
+        )
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
