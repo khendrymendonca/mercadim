@@ -216,7 +216,7 @@ function ImportNF() {
                     </label>
                     <textarea
                         className="input"
-                        placeholder="Ex: 3125 1217 7456 1300 4814 6501 5000 3430 5319 7553 8287"
+                        placeholder="Cole aqui os 44 dígitos da chave de acesso..."
                         value={chaveInput}
                         onChange={(e) => setChaveInput(formatChave(e.target.value))}
                         rows={3}
