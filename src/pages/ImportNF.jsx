@@ -4,15 +4,15 @@ import { addPurchase, getAllStores, addStore } from '../db';
 import { formatCurrency } from '../utils/format';
 import { format } from 'date-fns';
 
-// Extrai a chave de acesso de uma URL de QR Code de NFC-e
-function extractChaveFromUrl(text) {
-    // QR Code NFC-e: ...?p=CHAVE44|...|...|...
-    const paramMatch = text.match(/[?&]p=([0-9]{44})/);
-    if (paramMatch) return paramMatch[1];
-    // QR Code direto com chave como valor
+// Extrai chave e URL do QR Code de NFC-e
+function parseQRContent(text) {
+    // QR Code NFC-e: URL?p=CHAVE44|token|dhEmi|vNF|hash
+    const urlMatch = text.match(/https?:\/\/[^\s]+(?:\?|&)p=[0-9]{44}/i);
     const chaveMatch = text.match(/\b([0-9]{44})\b/);
-    if (chaveMatch) return chaveMatch[1];
-    return null;
+    return {
+        chave: chaveMatch?.[1] || null,
+        qrUrl: urlMatch?.[0] || null,
+    };
 }
 
 // Formata a chave para exibição: blocos de 4 dígitos
@@ -55,7 +55,6 @@ function ImportNF() {
         setError('');
         setScannerActive(true);
 
-        // Aguarda o DOM renderizar o elemento alvo
         setTimeout(async () => {
             try {
                 const { Html5Qrcode } = await import('html5-qrcode');
@@ -67,15 +66,16 @@ function ImportNF() {
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
                         stopScanner();
-                        const chave = extractChaveFromUrl(decodedText);
+                        const { chave, qrUrl } = parseQRContent(decodedText);
                         if (chave) {
                             setChaveInput(formatChave(chave));
-                            consultarNFe(chave);
+                            // Passa a URL completa do QR Code (tem hash de autenticação)
+                            consultarNFe(chave, qrUrl);
                         } else {
                             setError('QR Code lido, mas não contém uma chave NF-e válida.');
                         }
                     },
-                    () => { } // ignora frames sem QR
+                    () => { }
                 );
             } catch (err) {
                 setScannerActive(false);
@@ -84,7 +84,7 @@ function ImportNF() {
         }, 200);
     };
 
-    const consultarNFe = async (chaveOverride) => {
+    const consultarNFe = async (chaveOverride, qrUrl) => {
         const chave = (chaveOverride || chaveInput).replace(/\s/g, '');
         if (chave.length !== 44) {
             setError('A chave de acesso deve ter exatamente 44 dígitos.');
@@ -96,7 +96,10 @@ function ImportNF() {
         setNfData(null);
 
         try {
-            const res = await fetch(`/api/consulta-nfe?chave=${chave}`);
+            // Usa a URL completa do QR Code se disponível (tem hash de autenticação do SEFAZ)
+            const params = new URLSearchParams({ chave });
+            if (qrUrl) params.append('qrurl', qrUrl);
+            const res = await fetch(`/api/consulta-nfe?${params.toString()}`);
             const data = await res.json();
 
             if (!res.ok) {
