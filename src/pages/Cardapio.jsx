@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ChefHat, Plus, Trash2, Edit2, Check, X, ChevronDown, ChevronUp, Calendar, ShoppingBag, UtensilsCrossed, Loader, AlertCircle } from 'lucide-react';
 import {
     getAllCardapios, createCardapio, updateCardapio, deleteCardapio,
-    addPrato, updatePrato, deletePrato,
+    addPrato, deletePrato,
     addIngrediente, deleteIngrediente,
-    saveFrequencia
+    saveFrequencia, getAllProducts
 } from '../db';
 import { createShoppingList, addShoppingListItem } from '../db';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, getDay, differenceInWeeks } from 'date-fns';
@@ -300,6 +300,8 @@ function CardapioEditor({ cardapio, onSave, onCancel }) {
     const [pratos, setPratos] = useState(cardapio.cardapio_pratos || []);
     const [novoPrato, setNovoPrato] = useState('');
     const [novoIng, setNovoIng] = useState({});
+    const [sugestoes, setSugestoes] = useState({});  // sugestoes por pratoId
+    const [produtos, setProdutos] = useState([]);    // catálogo existente
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -317,7 +319,29 @@ function CardapioEditor({ cardapio, onSave, onCancel }) {
     const datasPreview = calcularDatasDoMes(freqPreview, hoje.getFullYear(), hoje.getMonth() + 1);
     const nomeMesPreview = format(hoje, 'MMMM', { locale: ptBR });
 
+    // Carrega catálogo de produtos para autocomplete
+    useEffect(() => {
+        getAllProducts().then(p => setProdutos(p || []));
+    }, []);
+
     const toggleDia = (dia) => setDiasSelecionados(prev => prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia]);
+
+    // Autocomplete: filtra produtos pelo texto digitado
+    const handleIngChange = (pratoId, val) => {
+        setNovoIng(prev => ({ ...prev, [pratoId]: val }));
+        if (val.trim().length < 2) { setSugestoes(prev => ({ ...prev, [pratoId]: [] })); return; }
+        const lower = val.toLowerCase();
+        const matches = produtos
+            .filter(p => p.name?.toLowerCase().includes(lower))
+            .slice(0, 5)
+            .map(p => p.name);
+        setSugestoes(prev => ({ ...prev, [pratoId]: matches }));
+    };
+
+    const selecionarSugestao = (pratoId, nome) => {
+        setNovoIng(prev => ({ ...prev, [pratoId]: nome }));
+        setSugestoes(prev => ({ ...prev, [pratoId]: [] }));
+    };
 
     const handleAddPrato = async () => {
         if (!novoPrato.trim() || !cardapio.id) return;
@@ -339,13 +363,11 @@ function CardapioEditor({ cardapio, onSave, onCancel }) {
         const val = (novoIng[pratoId] || '').trim();
         if (!val) return;
         try {
-            const parts = val.split(' ');
-            const productName = parts[0];
-            const qty = parseFloat(parts[1]) || 1;
-            const unit = parts[2] || 'un';
-            const ing = await addIngrediente(pratoId, productName, qty, unit);
+            // Ingrediente é só o nome — sem precisar de quantidade/unidade
+            const ing = await addIngrediente(pratoId, val, 1, 'un');
             setPratos(prev => prev.map(p => p.id === pratoId ? { ...p, cardapio_ingredientes: [...(p.cardapio_ingredientes || []), ing] } : p));
             setNovoIng(prev => ({ ...prev, [pratoId]: '' }));
+            setSugestoes(prev => ({ ...prev, [pratoId]: [] }));
         } catch (e) { setError(e.message); }
     };
 
@@ -487,14 +509,28 @@ function CardapioEditor({ cardapio, onSave, onCancel }) {
                                         </span>
                                     ))}
                                 </div>
-                                <div style={{ display: 'flex', gap: '4px' }}>
-                                    <input className="input" style={{ minHeight: 'unset', padding: '6px 10px', fontSize: '13px' }}
-                                        placeholder="Ingrediente (ex: Frango 500 g)" value={novoIng[prato.id] || ''}
-                                        onChange={e => setNovoIng(prev => ({ ...prev, [prato.id]: e.target.value }))}
-                                        onKeyDown={e => e.key === 'Enter' && handleAddIng(prato.id)} />
-                                    <button onClick={() => handleAddIng(prato.id)} style={{ background: 'var(--primary-500)', border: 'none', borderRadius: 'var(--radius-md)', padding: '6px 12px', cursor: 'pointer', color: 'white', fontWeight: 700 }}>
-                                        <Plus size={16} />
-                                    </button>
+                                <div style={{ position: 'relative' }}>
+                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                        <input className="input" style={{ minHeight: 'unset', padding: '6px 10px', fontSize: '13px' }}
+                                            placeholder="Nome do produto..." value={novoIng[prato.id] || ''}
+                                            onChange={e => handleIngChange(prato.id, e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && handleAddIng(prato.id)} />
+                                        <button onClick={() => handleAddIng(prato.id)} style={{ background: 'var(--primary-500)', border: 'none', borderRadius: 'var(--radius-md)', padding: '6px 12px', cursor: 'pointer', color: 'white', fontWeight: 700 }}>
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
+                                    {sugestoes[prato.id]?.length > 0 && (
+                                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--slate-200)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-md)', zIndex: 50, overflow: 'hidden' }}>
+                                            {sugestoes[prato.id].map(s => (
+                                                <button key={s} onClick={() => selecionarSugestao(prato.id, s)}
+                                                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', borderBottom: '1px solid var(--slate-100)' }}
+                                                    onMouseEnter={e => e.target.style.background = 'var(--primary-50)'}
+                                                    onMouseLeave={e => e.target.style.background = 'none'}>
+                                                    {s}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
